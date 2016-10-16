@@ -1,0 +1,34 @@
+Package: proFIA
+Type: Package
+Title: Preprocessing of FIA-HRMS data
+Version: 0.99.8
+Date: 2016-05-04
+Author: Alexis Delabriere and Etienne Thevenot.
+Maintainer: Alexis Delabriere <alexis.delabriere@cea.fr>
+biocViews: MassSpectrometry, Metabolomics, Lipidomics, Preprocessing,
+        PeakDetection, Proteomics
+Depends: R (>= 3.3.0), xcms
+Imports: stats, graphics, utils, grDevices, methods, pracma, Biobase,
+        FNN, minpack.lm, BiocParallel
+Suggests: ropls, BiocGenerics, plasFIA, knitr,
+VignetteBuilder: knitr
+Description: Flow Injection Analysis coupled to High-Resolution Mass
+        Spectrometry is a promising approach for high-throughput
+        metabolomics. FIA- HRMS data, however, cannot be pre-processed
+        with current software tools which rely on liquid chromatography
+        separation, or handle low resolution data only. Here we present
+        the proFIA package, which implements a new methodology to
+        pre-process FIA-HRMS raw data (netCDF, mzData, mzXML, and mzML)
+        including noise modelling and injection peak reconstruction,
+        and generate the peak table. The workflow includes noise
+        modelling, band detection and filtering then signal matching
+        and missing value imputation. The peak table can then be
+        exported as a .tsv file for further analysis. Visualisations to
+        assess the quality of the data and of the signal made are
+        easely produced.
+License: CeCILL
+NeedsCompilation: yes
+RoxygenNote: 5.0.1
+Collate: 'Denoising.R' 'cWrapper.R' 'noiseEstimator.R'
+        'classContainer.R' 'fastMatchPpm.R' 'findPeaksFIA.R'
+        'methodsContainer.R' 'proFIA-package.R'
