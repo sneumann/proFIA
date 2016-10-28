@@ -39,9 +39,9 @@ acquisitionDirectory <- function(files = NULL) {
     info <- file.info(files)
     listed <- list.files(
         files[info$isdir],
-        pattern <- filepattern,
-        recursive <- TRUE,
-        full.names <- TRUE
+        pattern = filepattern,
+        recursive = TRUE,
+        full.names = TRUE
     )
     if (length(listed) == 0)
         stop("impossible to find any supported data format.")
@@ -695,6 +695,22 @@ getRawName <- function(filenames) {
     })))
 }
 
+
+getUniqueIds <- function(ids){
+	tid <- table(ids)
+	pmul <- which(tid>1)
+	
+	lab <- names(tid)
+	if(length(pmul)>0){
+		for(i in 1:length(pmul)){
+			posok= which(ids == lab[pmul[i]])
+			labvec=paste(ids[posok],c('',paste('_',2:(tid[pmul[i]]),sep="")),sep = "")
+			ids[posok]=labvec
+		}
+	}
+	ids
+}
+
 setGeneric("makeDataMatrix", function(object, ...)
     standardGeneric("makeDataMatrix"))
 #' Construct the data matrix of a proFIAset object.
@@ -732,9 +748,9 @@ setMethod("makeDataMatrix", "proFIAset", function(object, maxo = FALSE) {
         }
     }
     matResult <- matResult[, which(1:max(unSample) %in% unSample)]
-    colnames(matResult) <- getRawName(object@classes[, 1])
+    colnames(matResult) <- getUniqueIds(getRawName(object@classes[, 1]))
     rownames(matResult) <-
-        paste("M", sprintf("%0.4f", object@group[, 1]), sep = "")
+    	getUniqueIds(paste("M", sprintf("%0.4f", object@group[, 1]), sep = ""))
     object@dataMatrix <- matResult
     object@step <- "Matrix_created"
     object
