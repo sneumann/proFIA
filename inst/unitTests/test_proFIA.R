@@ -51,6 +51,6 @@ test_group.FIA<-function(){
     if(require(plasFIA)){
     data(plasSet)
     tg=proFIA:::group.FIA(plasSet,ppm=0.5,fracGroup=1)
-    checkEquals(nrow(tg@group),165)
+    checkEquals(nrow(tg@group),168)
     }
 }

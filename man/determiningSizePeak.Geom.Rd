@@ -5,11 +5,17 @@
 \alias{determiningSizePeak.Geom}
 \title{Determine the limits of the injection peak in a FIA acquisition.}
 \usage{
-determiningSizePeak.Geom(xraw, freq = 0.15, graphical = FALSE,
-  smooth = TRUE, extended = FALSE, percentSol = NULL)
+determiningSizePeak.Geom(xraw, scanmin = 1, scanmax = length(xraw@scantime),
+  freq = 0.15, graphical = FALSE, smooth = TRUE, extended = FALSE,
+  percentSol = NULL)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
+
+\item{scanmin}{The minimum scan to consider for peak detection.}
+
+\item{scanmax}{the maximum scan to consider.
+injection peak detection.}
 
 \item{freq}{The degrees of smoothing used on the TIC, corresponding to
 the cutting frequency of the blackman windowed sync filter.}
@@ -20,8 +26,7 @@ the cutting frequency of the blackman windowed sync filter.}
 
 \item{extended}{In case of very long tailing, shloud the research be extended.}
 
-\item{percentSol}{If extended is TRUE, the limiting level of solvent for
-injection peak detection.}
+\item{percentSol}{If extended is TRUE, the limiting level of solvent for}
 }
 \value{
 A triplet composed of c(left limit,right limit, maximum) of the

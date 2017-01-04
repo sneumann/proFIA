@@ -96,6 +96,8 @@ checkIsoValues <- function(x) {
 #' @param pvalthresh The threshold used in p-value to discard signal, only used if
 #' a noise model is furnished.
 #' @param ... more arguments to be passed to the \link{determiningSizePeak} function.
+#' @param scanmin The first scan to consider.
+#' @param scanmax The last scan to consider.
 #' @return A numeric matrix with the following column
 #' \itemize{
 #'     \item mzmin the minimum value of the mass traces in the m/z dimension.
@@ -146,12 +148,15 @@ findFIASignal <-
              SNT = NULL,
              f = c("regression", "TIC"),
              pvalthresh = NULL,
+    		 scanmin = 1,
+    		 scanmax = length(xraw@scantime),
              ...) {
         solint <- match.arg(solint)
         solvar <- match.arg(solvar)
         f <- match.arg(f)
         n <- length(xraw@scantime)
-        sizepeak <- determiningSizePeak.Geom(xraw, ...)
+        sizepeak <- determiningSizePeak.Geom(xraw,scanmin = scanmin, scanmax = scanmax, ...)
+        sizepeak <- sizepeak + scanmin -1
         if (length(sizepeak) < 3) {
             warning(paste(
                 "No injection peak has been detected in the acquisition",
@@ -170,6 +175,7 @@ findFIASignal <-
                 "maxIntensity",
                 "solventIntensity",
                 "corPeak",
+                "shifted",
                 "Sig_Sol"
             )
         
@@ -199,15 +205,16 @@ findFIASignal <-
         
         AllBand <- findBandsFIA(
             xraw,
-            firstScan = 1,
-            lastScan = length(xraw@scantime),
             ppm = ppm,
             sizeMin = (sizepeak[3] -
                            sizepeak[1]) * 0.75,
             dmz =
                 dmz,
-            beginning = sizepeak[1]
+            beginning = sizepeak[1], firstScan = scanmin,
+            lastScan = scanmax
         )
+        pmmin = sizepeak[1]
+        pmmax = sizepeak[2]
         if (f == "TIC") {
             TICv <- rawEIC(xraw, mzrange = range(xraw@env$mz))$intensity
             
@@ -244,6 +251,8 @@ findFIASignal <-
         sizeInc <- floor((sizepeak[3] - sizepeak[1]))
         seqIndex <- floor(seq(0, 1000, length = sizeInc))
         modelInjPeak <- yTriangl[seqIndex]
+        if(sizeInc < 3)
+        	modelInjPeak <- yTriangl[c(0,500,1000)]
         nInj <- length(modelInjPeak)
         
         
@@ -260,6 +269,7 @@ findFIASignal <-
         message("Band filtering: ",appendLF = FALSE)
         memmess <- 1
         for (i in 1:nrow(AllBand)) {
+        	bshifted <- 0
             vact <- floor(i/nrow(AllBand)*100)%/%10
             if(vact!=memmess){
                 memmess <- vact
@@ -311,7 +321,7 @@ findFIASignal <-
             convolvedSeqInj <- convolve(vEic$intensity, modelInjPeak, type = "filter")
             smoothedSeq <- smooth.BWF(vEic$intensity, freq = 0.2)
             ###Getting the local maximum.
-            pMf <- which.max(convolvedSeqF)
+            pMf <- which.max(convolvedSeqF[scanmin:scanmax])+scanmin
             pMmin <- which.min(convolvedSeqF)
             posMax <- pMf + (floor(nf / 2))
             posMin <- pMmin + (floor(nf / 2))
@@ -399,11 +409,13 @@ findFIASignal <-
                 ##modelPeak.
                 #peaklim = floor(nf / 2)+c(pMf - (floor(nf / 2)), pMf + (floor(nf / 2)))
                 ###Locating the limit of the peak found
+            	bshifted = 1
                 pl <- findPeaksLimits(convolvedSeqF, pMf - 3, pMf + 3)
                 peaklim <- pl+floor(nf / 2)
                 #cat("mumu",posMax,"    ")
                 if(diff(peaklim)<length(modelPeak)) peaklim=NULL
             }
+            
             ###Resizeing the first limit
             ###Quality control of the found peak.
             NoPeak <- is.null(peaklim)
@@ -418,6 +430,11 @@ findFIASignal <-
             } else if (valSol == 0) {
                 pval <- 0
                 SNTval <- Inf
+                ###Checking that the final peak detected is not shifted.
+                if(peaklim[2]>sizepeak[2] & abs(posMax-sizepeak[2]) < abs(posMax-sizepeak[3]) &
+                   abs(peaklim[1]-sizepeak[3])<abs(peaklim[1]-sizepeak[1])){
+                	bshifted <- 1
+                }
             } else if (QC == "Nes") {
                 pval <- calcPvalue(
                     es,
@@ -429,6 +446,16 @@ findFIASignal <-
                     next
                 if (SNTval < 2)
                     next
+                ###Checking that the final peak detected is not shifted.
+                if(peaklim[2]>sizepeak[2] & abs(posMax-sizepeak[2]) < abs(posMax-sizepeak[3]) &
+                   abs(peaklim[1]-sizepeak[3])<abs(peaklim[1]-sizepeak[1])){
+                	bshifted <- 1
+                }
+                
+                
+            }
+            if(bshifted){
+            	valCor <- -2
             }
             ###Intensities are calculated
             iArea <- 0
@@ -467,6 +494,7 @@ findFIASignal <-
                     mEic,
                     valSol,
                     valCor,
+                    bshifted,
                     SNTval
                 )
                 
@@ -557,6 +585,8 @@ findFIASignal <-
 #' @param smooth Should the TIC be smoothed, recommended.
 #' @param extended In case of very long tailing, shloud the research be extended.
 #' @param percentSol If extended is TRUE, the limiting level of solvent for
+#' @param scanmin The minimum scan to consider for peak detection.
+#' @param scanmax the maximum scan to consider.
 #' injection peak detection.
 #' @return A triplet composed of c(left limit,right limit, maximum) of the
 #' estimated injection peak.
@@ -574,7 +604,8 @@ findFIASignal <-
 #' }
 
 determiningSizePeak.Geom <-
-    function(xraw,
+    function(xraw, scanmin=1,
+    		 scanmax=length(xraw@scantime),
              freq = 0.15,
              graphical = FALSE,
              smooth = TRUE,
@@ -587,11 +618,12 @@ determiningSizePeak.Geom <-
         }
         n <- length(TIC$intensity)
         
-        #   sdTime=sd(xraw@scantime)
-        #   sdInt=sd(TIC$intensity)
+        ###Subsetteing the value
+        TIC$intensity <- TIC$intensity[scanmin:scanmax]
+        
         ###Solvant is approximates as the mean of the lower decile.
         
-        sTime <- scale(xraw@scantime[TIC$scan], center = FALSE)
+        sTime <- scale(xraw@scantime[TIC$scan][scanmin:scanmax], center = FALSE)
         sInt <- scale(TIC$intensity, center = FALSE)
         maxInt <- max(sInt)
         sval <- quantile(sInt, 0.15)
@@ -636,11 +668,11 @@ determiningSizePeak.Geom <-
             }
         }
         if (graphical) {
-            TICv <- rawEIC(xraw, mzrange = range(xraw@env$mz))
+            TICv <- rawEIC(xraw, mzrange = range(xraw@env$mz))[scanmin:scanmax]
             ntitle <- basename(xraw@filepath)
             ntitle <- strsplit(ntitle, ".", fixed = TRUE)[[1]][1]
             plot(
-                xraw@scantime,
+                xraw@scantime[scanmin:scanmax],
                 TICv$intensity,
                 xlab = "Seconds",
                 ylab = "Intensity",
@@ -669,9 +701,9 @@ determiningSizePeak.Geom <-
             )
         }
         message("An injection peak has been spotted:",
-            sprintf("%0.1f",xraw@scantime[peaklim[1]]),
+            sprintf("%0.1f",xraw@scantime[peaklim[1]+scanmin-1]),
             "-",
-            sprintf("%0.1f",xraw@scantime[peaklim[2]]),
+            sprintf("%0.1f",xraw@scantime[peaklim[2]+scanmin-1]),
             "s\n")
         return(peaklim)
     }

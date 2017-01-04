@@ -9,7 +9,7 @@
 \S4method{plotEICs}{proFIAset}(object, index = NULL, mz = NULL,
   subsample = NULL, ppm = 5, margin = 2e-04, posleg = c("topright",
   "bottomright", "bottom", "bottomleft", "left", "topleft", "top", "right",
-  "center"), title = NULL, ...)
+  "center"), title = NULL, scaled = FALSE, ...)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -29,6 +29,8 @@ the research use the \code{\link{findMzGroup}} function.}
 
 \item{title}{An optional vector of title for the plot. Need to be of the same
 length than index.}
+
+\item{scaled}{Shall all the EIC be put on the same scale with maximum to 1.}
 
 \item{...}{Supplementary graphical parameters to be passed to lines.}
 }

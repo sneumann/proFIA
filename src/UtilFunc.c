@@ -213,11 +213,18 @@ void linearInterpolation(double *intseq,int *imin, int *imax, int *counter)
     }
 }
 
+//hotfix to prevent randoom crash.
 void checkIso(double *intensity, int *num_iso, int *valid, int *smax)
 {
     int i;
     int counter=0;
     *valid=1;
+    if(*smax == 0){
+        if(intensity[0] != 0){
+            *valid = 0;
+            return;
+        }
+    }
     for(i=0; i<*smax; i++)
     {
         if(intensity[i]>0)

@@ -469,7 +469,8 @@ setMethod("group.FIA", "proFIAset", function(object,
         "scanMin",
         "scanMax",
         "nPeaks",
-        "meanSolvent"
+        "meanSolvent",
+        "shifted"
     )
     boolpval <- FALSE
     NamesPeakList <- colnames(tabP)
@@ -610,6 +611,7 @@ setMethod("group.FIA", "proFIAset", function(object,
                 range(c(subpeakl[selectedPGroup, "mzmin"], subpeakl[selectedPGroup, "mzmax"]))
             
             groupmat[num_group, "nPeaks"] <- length(posSample)
+            groupmat[num_group, "shifted"] <- ifelse(sum(subpeakl[selectedPGroup, "shifted"])==0,0,1)
             
             groupmat[num_group, "meanSolvent"] <-
                 mean(subpeakl[posSample, "solventIntensity"])
@@ -942,15 +944,15 @@ setGeneric("peaksGroup", function(object, ...)
 #' }
 setMethod("peaksGroup", "proFIAset", function(object,
                                               index = NULL) {
-    if (!is.integer(index))
-        stop("Index need to be an integer or a vector of integer.")
+    if (!is.numeric(index))
+        stop("Index need to be an integer or a vector of numeric.")
     posna <- which(is.na(index))
     if(length(posna)!=0){
         index <- index[-posna]
     }
     if (length(index)==0)
         stop("Index is of size 0, or only NA are furnished.")
-    matGroup <- object@peaks[unlist(object@groupidx[index]),]
+    matGroup <- object@peaks[unlist(object@groupidx[index]),,drop=FALSE]
     return(matGroup)
 })
 
@@ -1154,6 +1156,7 @@ setGeneric("plotEICs", function(object, ...)
 #' the research use the \code{\link{findMzGroup}} function.
 #' @param subsample A subset of sample to be plotted.
 #' @param ppm The tolerance for the research if mz is furnished.
+#' @param scaled Shall all the EIC be put on the same scale with maximum to 1.
 #' @param margin An area outer the EICs mz range on which the EIC may be extended.
 #' @param ...  Supplementary graphical parameters to be passed to lines.
 #' @param posleg The position of the legend on the figure. See \code{\link[graphics]{legend}}.
@@ -1176,7 +1179,7 @@ setMethod("plotEICs", "proFIAset", function(object,
                                             posleg=c("topright","bottomright", "bottom",
                                                      "bottomleft", "left", "topleft",
                                                      "top", "right", "center"),title=NULL,
-                                            ...) {
+                                            scaled=FALSE,...) {
     posleg <- match.arg(posleg)
     if(!(object@step %in% c("Samples_grouped","Matrix_created","Fillpeaks"))){
         stop("Peaks needs to be grouped before plotting the EICs, see ?group.FIA.")
@@ -1199,7 +1202,7 @@ setMethod("plotEICs", "proFIAset", function(object,
                      ncol = nrow(object@classes))
     matmz <- matrix(0, nrow = length(index), ncol = 3)
     for (i in 1:length(index)) {
-        matpres[i, object@peaks[object@groupidx[[index[i]]],][, "sample"]] = 1
+        matpres[i, object@peaks[object@groupidx[[index[i]]],,drop=FALSE][, "sample"]] = 1
         matmz[i,] = object@group[index[i], c("mzMin", "mzMax", "mzMed")]
     }
     if (!is.null(subsample)) {
@@ -1220,6 +1223,7 @@ setMethod("plotEICs", "proFIAset", function(object,
             } else{
                 mzrange <- c(matmz[j, c(1, 2), drop = FALSE])
                 rEIC[[j]] <- rawEIC(xraw, mzrange = c(mzrange[1], mzrange[2]))$intensity
+                if(scaled) rEIC[[j]] <- rEIC[[j]]/max(rEIC[[j]])
                 # print(sum(rEIC[[j]]))
             }
         }
@@ -1807,7 +1811,8 @@ keysVariableMetadata<-function(x){
         meanSolvent="The mean level of solvent in the sample.",
         pvalueMean="The mean p-value in the group",
         corMean="The mean correlation with the injection peak in the sample",
-        SigSolMean="mean of signal on solvent intensity ratio"
+        SigSolMean="mean of signal on solvent intensity ratio",
+        shifted="indicator of time scaled signal"
     )
 }
 
@@ -1832,7 +1837,7 @@ setGeneric("exportExpressionSet", function(object, ...)
 #'     eset
 #' }
 setMethod("exportExpressionSet", "proFIAset", 
-          function(object,colgroup=c("mzMed","scanMin","scanMax","nPeaks","corMean","SigSolMean")){
+          function(object,colgroup=c("mzMed","scanMin","scanMax","nPeaks","corMean","SigSolMean","shifted")){
     if(nrow(object@dataMatrix)==0){
         stop("Data matrix needs  to be created for the object to be converted in ExpressionSet")
     }
@@ -1878,7 +1883,7 @@ setGeneric("exportPeakTable", function(object, ...)
 #'     \dontrun{ptable<-exportPeakTable(plasSet,filename="peak_table.tsv")}
 #' }
 setMethod("exportPeakTable", "proFIAset", 
-          function(object,colgroup=c("mzMed","corMean","meanSolvent","SigSolMean"),
+          function(object,colgroup=c("mzMed","corMean","meanSolvent","SigSolMean","shifted"),
                    mval=c("NA","zero"),filename=NULL){
               mval <- match.arg(mval)
               def <- 0

@@ -7,7 +7,7 @@
 \title{Export proFIAset to ExpressionSet}
 \usage{
 \S4method{exportExpressionSet}{proFIAset}(object, colgroup = c("mzMed",
-  "scanMin", "scanMax", "nPeaks", "corMean", "SigSolMean"))
+  "scanMin", "scanMax", "nPeaks", "corMean", "SigSolMean", "shifted"))
 }
 \arguments{
 \item{object}{A proFIAset object.}

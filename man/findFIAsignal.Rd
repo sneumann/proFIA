@@ -7,7 +7,8 @@
 \usage{
 findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
   solint = c("poly", "substract", "keep"), dmz = 5e-04, graphical = FALSE,
-  SNT = NULL, f = c("regression", "TIC"), pvalthresh = NULL, ...)
+  SNT = NULL, f = c("regression", "TIC"), pvalthresh = NULL,
+  scanmin = 1, scanmax = length(xraw@scantime), ...)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -44,6 +45,10 @@ intense band as an Exponential modified gaussian.}
 
 \item{pvalthresh}{The threshold used in p-value to discard signal, only used if
 a noise model is furnished.}
+
+\item{scanmin}{The first scan to consider.}
+
+\item{scanmax}{The last scan to consider.}
 
 \item{...}{more arguments to be passed to the \link{determiningSizePeak} function.}
 }
