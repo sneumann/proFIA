@@ -95,7 +95,7 @@ of a file, and "group" the class to which the file belong.}
 statistical analysis.}
 
 \item{\code{noiseEstimation}}{A model of noise as estimated by
-\link{estimateNoiseListFiles}}
+\link{estimateNoiseMS}}
 
 \item{\code{injectionPeaks}}{A list of the injection peak which have been
 detected for each experiment.}

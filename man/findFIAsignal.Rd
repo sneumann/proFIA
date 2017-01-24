@@ -16,7 +16,7 @@ findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
 \item{ppm}{The authorized deviation between scans in ppm, this parameter
 will also be used to fuse the bands if there are close enough.}
 
-\item{es}{A noise estimation object as returned by \link{estimateNoiseListFiles}, or NULL
+\item{es}{A noise estimation object as returned by \link{estimateNoiseMS}, or NULL
 if the parameter noise if only an threshold is supposed to be used.}
 
 \item{solvar}{Should the signal corresponding to solvent be kept ?

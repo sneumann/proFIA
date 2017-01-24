@@ -12,6 +12,7 @@
 #' @docType package
 #' @importFrom minpack.lm nls.lm nls.lm.control
 #' @importFrom FNN get.knn
+#' @importFrom maxLik maxLik
 #' @importFrom pracma pinv
 #' @importFrom grDevices colorRampPalette rainbow as.raster
 #' @importFrom graphics abline legend lines matplot plot

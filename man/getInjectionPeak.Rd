@@ -24,7 +24,7 @@ determining sizepeak.Geom will be used.}
 \item{graphical}{shald the individually fitted components be plotted.}
 }
 \value{
-A vector contaning the inject peak
+A vector contaning the injection peak
 }
 \description{
 Determine an injection peak as an exponential modified gaussian

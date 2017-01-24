@@ -75,7 +75,7 @@ checkIsoValues <- function(x) {
 #' will also be used to fuse the bands if there are close enough.
 #' @param dmz The minimum absolute value of the deviation between scans, to take into account
 #' the higher diviations at low masses.
-#' @param es A noise estimation object as returned by \link{estimateNoiseListFiles}, or NULL
+#' @param es A noise estimation object as returned by \link{estimateNoiseMS}, or NULL
 #' if the parameter noise if only an threshold is supposed to be used.
 #' @param  solvar Should the signal corresponding to solvent be kept ?
 #' Only their maximum intensiyt will be calculated.
@@ -339,8 +339,10 @@ findFIASignal <-
                 pl <- findPeaksLimits(smoothedSeq, peaklim[1] + 1, peaklim[2] - 1)
                 peaklim[2] <- pl[2]
                 ###The filter coeff goes down to find if there is a second peak.
-                posRawMax <- which.max(convolvedSeqF[max((posMax - adjustZone), 1):(posMax +
-                                                                                       adjustZone)]) + (posMax - adjustZone) - 1
+                #  cat("posRawMax :",convolvedSeqF[max((posMax - adjustZone), 1):(posMax +
+                #  															   	adjustZone)]," sup",(posMax - adjustZone),"\n")
+                posRawMax <- which.max(convolvedSeqF[max((pMf - adjustZone), 1):(pMf +
+                                                                                       adjustZone)]) + max(((pMf - adjustZone) - 1),1)
                 flim <- findPeaksLimits(convolvedSeqF, posRawMax - 1, posRawMax + 1)
                 if (posMax < sizepeak[2] &
                     ###Case where the max is the right of the peak.
@@ -724,7 +726,7 @@ determiningSizePeak.Geom <-
 #' @param gpeak An approximation of the injection peak, if NULL
 #' determining sizepeak.Geom will be used.
 #' @param graphical shald the individually fitted components be plotted.
-#' @return A vector contaning the inject peak
+#' @return A vector contaning the injection peak
 #' @aliases getInjectionPeak
 #' @examples
 #' if(require(plasFIA)){
@@ -755,11 +757,6 @@ getInjectionPeak <-
         if (is.null(gpeak)) {
             gpeak <- determiningSizePeak.Geom(xraw)
         }
-        if(is.null(bandlist)){
-            message("No bandList furnished")
-            bandlist=findBandsFIA(xraw,ppm=)
-        }
-        
         
         ###Filtering the peak to retain the peak without oslven
         ttrue <- which(bandlist[, "meanSolvent"] == 0)
@@ -785,8 +782,6 @@ getInjectionPeak <-
         if (length(vok) >= 5) {
             matInt <- matInt[, vok, drop = FALSE]
         }
-        
-        
         
         ###For each line getting the beginning of the injection peak
         getBeginning <- function(x, size = 3) {
@@ -841,24 +836,27 @@ getInjectionPeak <-
         #mu sigma tau then the a b and h
         inita <- 0.06
         initb <- 0.5
-        initpar <- c(xraw@scantime[gpeak[3]],
-                    (gpeak[1] + gpeak[2]) / 5,
-                    20,
-                    rep(inita, n),
-                    rep(initb, n),
-                    vmax)
+        initpar <- c(xraw@scantime[gpeak[3]-floor((gpeak[3]-gpeak[1])/2)],
+        			 (gpeak[3] - gpeak[1]) / 2,
+        			 20,
+        			 rep(inita, n),
+        			 rep(initb, n),
+        			 vmax)
         #matResiduals<-function(mpp,xx,mobs,type="gaussian",n){
         weigthvec <- length(c(
-            rep(2, gpeak[1] - 1),
-            seq(1, 0.25, length = (gpeak[3] - gpeak[1])),
-            seq(1, 0.25, length = (gpeak[2] - gpeak[3] +
-                                       1)),
-            rep(1, length(xraw@scantime) - gpeak[2])
+        	rep(2, gpeak[1]-1),3,
+        	seq(1, 0.75, length = (gpeak[3] - gpeak[1])-1),
+        	seq(1, 0.75, length = (gpeak[2] - gpeak[3] +
+        						   	1)),
+        	rep(1, length(xraw@scantime) - gpeak[2])
         ))
+        lower <- c(rep(-Inf,3),rep(0,n),rep(-Inf,2*n))
+        
+        
         nlC <- nls.lm.control(maxiter = 100, ptol = 0.001)
         tMat <- t(t(matDInt) / apply(matDInt, 2, max))
         if(graphical){
-        matplot(tMat, type = "l",xlab = "Time(s)",ylab="Scaled intensity")
+        matplot(tMat, type = "l",xlab = "Time (s)",ylab="Scaled intensity")
         }
         parestimate <- nls.lm(
             par = initpar,
@@ -869,6 +867,7 @@ getInjectionPeak <-
             xx = xraw@scantime,
             control = nlC,
             n = n,
+            lower = lower,
             weigth = weigthvec
         )
         cest <- coef(parestimate)
@@ -880,12 +879,12 @@ getInjectionPeak <-
             tr <- persoConv(xraw@scantime, parv, type = "gaussian")
             mat_eff <- -matrix_effect(tr, parm[1], parm[2])
             fitted <- (tr + mat_eff) * parm[3]
-            multiplier[i] <- max(fitted) / parm[3]
+            multiplier[i] <- max(fitted)
             if (graphical) {
-                plot(xraw@scantime, tMat[, i], type = "l")
-                lines(xraw@scantime, fitted, col = "red")
-                lines(xraw@scantime, mat_eff + 1, col = "blue")
-                lines(xraw@scantime, tr , col = "green")
+                plot(xraw@scantime, tMat[, i],ylim=c(0,max(1,tr*parm[3])), type = "l")
+                lines(xraw@scantime, fitted*tr, col = "red")
+                lines(xraw@scantime, (mat_eff + 1)*parm[3], col = "blue")
+                lines(xraw@scantime, tr*parm[3] , col = "green")
             }
         }
         TP <- persoConv(xraw@scantime, p = parv)
@@ -945,6 +944,7 @@ persoConv <- function(time, p, type = c("gaussian", "triangle")) {
     return(vv / max(vv))
 }
 
+###Term - a added to remove the intensity in 0
 matrix_effect <- function(intensity, a, b) {
     tr <- a * exp(b * intensity)#+(p$c)*exp(p$d*intensity)) #+p$c*exp(p$d*intensity))/(p$a+p$c)
     tr
@@ -977,6 +977,372 @@ matResiduals <-
         matdiff <- matdiff * weigth
         return(matdiff)
     }
+
+# Fit an injection peak to an FIA acquisition using likehood maximization
+# 
+# Determine an injection peak as an exponential modified gaussian
+# function and a second order exponential corresponding to matrix
+# effect to the most intense signals in an acquisition.
+# 
+# @param xraw An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.
+# @param bandlist A list of bands which can be used. Shall stay NULL in general use.
+# bands will be determined automatically.
+# @param noiseModel A noiseEstimation object, usually will be passed by the proFIAset
+# function;
+# @param sec A tolerance in sec to group the signals.
+# @param iquant The maximum intensity intensity threshold under which the peaks
+# would not be used for peak determination.
+# @param gpeak An approximation of the injection peak, if NULL
+# determining sizepeak.Geom will be used.
+# @param graphical shald the individually fitted components be plotted.
+# @return A vector contaning the injection peak
+# @aliases getInjectionPeak.logL
+# @examples
+# if(require(plasFIA)){
+#   #Getting the path of a file.
+#   path_raw <- list.files(system.file(package="plasFIA","mzML"),full.names=TRUE)[2]
+# 
+#   #Opening the file with xcms
+#   xraw <- xcmsRaw(path_raw)
+# 
+#   #Getting the injection scan
+#   gp <- determiningSizePeak.Geom(xraw)
+# 
+#   #performing band detection.
+#   tbands <- findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1])
+# 
+# 	 #Loading a noise model.
+# 	 data(plasSet)
+# 	 nes <- plasSet@noiseEstimation
+# 
+#   #Getting the injection peak
+#   vpeak <- getInjectionPeak(xraw,bandlist=tbands,noiseModel = nes,gpeak=gp)
+#   plot(vpeak,type="l")
+# }
+
+# logL <-
+# 	function(mpp,
+# 			 xx,
+# 			 observed,
+# 			 weigth,noiseModel=NULL){
+# 		n <- (length(mpp)-3)/2
+# 		mu <- rep(mpp[1], n)
+# 		sigma <- rep(mpp[2], n)
+# 		tau <- rep(mpp[3], n)
+# 		a <- mpp[4:(3 + n)]
+# 		b <- mpp[(4 + n):(3 + 2 * n)]
+# 		h <- mpp[(4 + 2 * n):(3 + 3 * n)]
+# 		matpar <- matrix(c(mu, sigma, tau, a, b, h), ncol = 6)
+# 		trmat <- apply(matpar, 1, persoConv, time = xx)
+# 		mmareffect <- sapply(1:ncol(trmat), function(x, va, vb, mat) {
+# 			a <- va[x]
+# 			b <- vb[x]
+# 			- matrix_effect(mat[, x], a, b)
+# 		}, mat = trmat, va = a, vb = b)
+# 		trmatres <- t(t(trmat + mmareffect) * h)
+# 		matdiff <- observed - trmatres
+# 		matdiff <- matdiff
+# 		###Calculating the noise variance.
+# 		nvar <- apply(trmatres,1,noiseModel@estimation)
+# 		prob <- rbind(as.numeric(nvar),as.numeric(matdiff))
+# 		prob <- apply(prob,2,function(x){
+# 			log10(dnorm(x[2],0,x[1]))
+# 		}) 
+# 		###Calculating the prob
+# 
+# 		return(prob)
+# 	}
+# 
+# getInjectionPeak.logL <-
+# 	function(xraw,
+# 			 bandlist=NULL,
+# 			 noiseModel = NULL,
+# 			 sec = 2,
+# 			 iquant = 0.95,
+# 			 gpeak = NULL,
+# 			 graphical = FALSE, maxSig = 10) {
+# 		if (is.null(gpeak)) {
+# 			gpeak <- determiningSizePeak.Geom(xraw)
+# 		}
+# 		if(is.null(bandlist)){
+# 			message("No bandList furnished")
+# 			bandlist=findBandsFIA(xraw,ppm=)
+# 		}
+# 		
+# 		
+# 		###Filtering the peak to retain the peak without oslven
+# 		ttrue <- which(bandlist[, "meanSolvent"] == 0)
+# 		ttrue <- bandlist[ttrue,]
+# 		
+# 		
+# 		
+# 		###Hard thresh
+# 		ht <- quantile(ttrue[, "maxIntensity"], probs = iquant)
+# 		ttrue <- ttrue[which(ttrue[, "maxIntensity"] >= ht),]
+# 		###Making hte matrix with the selected threshold
+# 		matInt <- apply(ttrue, 1, function(x, xraw) {
+# 			requireNamespace("xcms")
+# 			a = rawEIC(xraw, mzrange = c(x["mzmin"], x["mzmax"]))
+# 			a$intensity
+# 		}, xraw = xraw)
+# 		
+# 		
+# 		###A number of 0 equal to the size of the injection peak is furnished to avoid
+# 		###Problem fitting the beginning of the peaks
+# 		###Making a verfication that the retianed profiles does not have oslvent in it
+# 		vok <- which(as.logical(apply(matInt, 2, checkIso, niso = 3)))
+# 		if (length(vok) >= 5) {
+# 			matInt <- matInt[, vok, drop = FALSE]
+# 		}
+# 		
+# 		###For each line getting the beginning of the injection peak
+# 		getBeginning <- function(x, size = 3) {
+# 			a <- which((x[3:length(x)] != 0) &
+# 					   	(x[2:(length(x) - 1)] != 0) &
+# 					   	(x[1:(length(x) - 2)] != 0))
+# 			return(a[1])
+# 		}
+# 		vb <- apply(matInt, 2, getBeginning)
+# 		
+# 		tvb <- table(vb)
+# 		tvbo <- sort(tvb, decreasing = TRUE)
+# 		ctvb <- cumsum(tvbo) / sum(tvbo)
+# 		poscut <- which(ctvb > 0.6)[1]
+# 		pvd <- density(vb, bw = sec / 3)
+# 		pmax <- which.max(pvd$y)
+# 		vp <- findPeaksLimits(pvd$y, pmax - 1, pmax + 1)
+# 		
+# 		####Checking the correctness of the gorup found.
+# 		retentionInColumn <- function(xraw, pok, rangeSec = sec) {
+# 			if (diff(range(xraw@scantime[pok])) > rangeSec) {
+# 				warning("Too much retention, a clear injection peak may not be found.")
+# 				return(FALSE)
+# 			}
+# 			return(TRUE)
+# 		}
+# 		
+# 		inter <- pvd$x[vp]
+# 		matDInt <- matInt[, which(vb >= inter[1] & vb <= inter[2])]
+# 		#print(ttrue[which(vb %in% tokeep),])
+# 		#return(ttrue[which(vb %in% tokeep),])
+# 		message(paste(
+# 			ncol(matDInt),
+# 			"chromatograms have been used for peak shape determination."
+# 		))
+# 		#densval=density(vb,0.5)
+# 		###Clustring by the time limit.
+# 		vmax <- apply(matDInt, 2, max)
+# 		if(ncol(matDInt)>maxSig){
+# 			matDInt[,order(vmax,decreasing=TRUE)[1:maxSig]]
+# 		}
+# 		matSInt <- t(t(matDInt) / vmax)
+# 		n <- ncol(matSInt)
+# 		
+# 		
+# 		####○Making the first guess of the parameters.
+# 		#mu sigma tau then the a b and h
+# 		inita <- 0.06
+# 		initb <- 0.5
+# 		initmu <- xraw@scantime[gpeak[3]]
+# 		initsig <- (xraw@scantime[gpeak[1]] + xraw@scantime[gpeak[2]]) / 5
+# 		inittau <- 10
+# 		initpar <- c(initmu,
+# 					 initsig,
+# 					 inittau,
+# 					 rep(inita, n),
+# 					 rep(initb, n))
+# 		
+# 		h <- vmax
+# 		tMat <- t(t(matDInt) / apply(matDInt, 2, max))
+# 		
+# 		#Log likehood function.
+# 		#TODO pass this in C code and otpimize it.
+# 		logL <-
+# 			function(mpp){
+# 				n <- (length(mpp)-3)/2
+# 				mu <- rep(mpp[1], n)
+# 				sigma <- rep(mpp[2], n)
+# 				tau <- rep(mpp[3], n)
+# 				a <- mpp[4:(3 + n)]
+# 				b <- mpp[(4 + n):(3 + 2 * n)]
+# 				matpar <- matrix(c(mu, sigma, tau, a, b, h), ncol = 6)
+# 				trmat <- apply(matpar, 1, persoConv, time = xraw@scantime)
+# 				mmareffect <- sapply(1:ncol(trmat), function(x, va, vb, mat) {
+# 					a <- va[x]
+# 					b <- vb[x]
+# 					- matrix_effect(mat[, x], a, b)
+# 				}, mat = trmat, va = a, vb = b)
+# 				trmatres <- t(t(trmat + mmareffect) * h)
+# 				matdiff <- matDInt - trmatres
+# 				matdiff <- matdiff
+# 				###Calculating the noise variance.
+# 				nvar <- apply(abs(trmatres),1,noiseModel@estimation)
+# 				prob <- rbind(as.numeric(nvar),as.numeric(matdiff))
+# 				prob <- apply(prob,2,function(x){
+# 					log10(dnorm(x[2],0,x[1]))
+# 				}) 
+# 				#browser()
+# 				###Calculating the prob
+# 				return(prob)
+# 			}
+# 		# 
+# 		# LL<-function(parv){
+# 		# 	#DEBUG addition of a plot.
+# 		# 	
+# 		# 	mu = parv[1]
+# 		# 	sigma = parv[2]
+# 		# 	tau = parv[3]
+# 		# 	alla = parv[4:(3+(length(parv)-3)/2)]
+# 		# 	allb = parv[(4+(length(parv)-3)/2):(3+2*(length(parv)-3)/2)]
+# 		# 	logl <- numeric(length(as.numeric(matSInt)))
+# 		# 	
+# 		# 	###We remove the h "parameter we will add it at the end.
+# 		# 	for(i in 1:length(alla)){
+# 		# 		TP <- persoConv(xraw@scantime, p = c(mu,sigma,tau),type="gaussian")
+# 		# 		mf <- -matrix_effect(TP, alla[i], allb[i])
+# 		# 		obs <- (TP+mf)
+# 		# 		obs <- (obs+min(obs))
+# 		# 		diff <- vmax[i]*(matSInt[,i]-obs)
+# 		# 
+# 		# 		vvar <- noiseModel@estimation(abs(diff))
+# 		# 		vdnorm <- apply(rbind(diff,vvar),2,function(x){dnorm(x[1],0,sd=x[2])})
+# 		# 
+# 		# 		logl[((i-1)*nrow(matSInt)+1):(i*nrow(matSInt))] <- (log(vdnorm))
+# 		# 		##DEBUG ADDING THE PLOT ON THE SAME PARAMETER.
+# 		# 		if(i==5){
+# 		# 			plot(matSInt[,i])
+# 		# 			lines(obs,col="red")
+# 		# 			#browser()
+# 		# 		}
+# 		# 		
+# 		# 	}
+# 		# 	print(sum(logl))
+# 		# 	return(logl)
+# 		# }
+# 		
+# 		##DEBUG
+# 		###Printing the LL for all the value.
+# 		# tauseq <- seq(inittau/2,inittau*1.5,length=40)
+# 		# sigseq <- seq(initsig/2,initsig*1.5,length=40)
+# 		# res <- numeric(length(tauseq)*length(sigseq))
+# 		# for(i in 1:length(sigseq)){
+# 		# 	for(j in 1:length(tauseq)){
+# 		# 		vpar <- c(initmu,
+# 		# 				  sigseq[i],
+# 		# 					tauseq[j],
+# 		# 					 rep(inita,n),
+# 		# 				  		rep(initb,n))
+# 		# 		
+# 		# 		res[(i-1)*length(sigseq)+j] <- LL(vpar)
+# 		# 	}
+# 		# }
+# 		# library(lattice)
+# 		# 
+# 		# wireframe(res ~ tauseq*sigseq, data = NULL,
+# 		# 		  xlab = "tau", ylab = "sig",
+# 		# 		  main = "tausig",
+# 		# 		  drape = TRUE,
+# 		# 		  colorkey = TRUE,
+# 		# 		  screen = list(z = -60, x = -60)
+# 		# )
+# 		
+# 		###END DEBUG
+# 		
+# 		ml <- maxLik( logL,start = initpar,method="BHHH", control=list(tol=1,iterlim = 200,printLevel=2))
+# 		# plot(xraw@scantime,
+# 		#      matInt[, 4] / max(matInt[, 4]),
+# 		#      col = "green",
+# 		#      type = "l")
+# 		
+# 		opar <- list()
+# 		print(summary(ml))
+# 		cest <- as.numeric(coef(ml))
+# 		print(cest)
+# 		cat(paste("cest",cest))
+# 		parv <- cest[1:3]
+# 		multiplier <- numeric(n)
+# 		for (i in 1:n) {
+# 			parm <- cest[c(3 + i, 3 + i + n)]
+# 			hi <- vmax[i]
+# 			cat(paste("parm",parm,"parv",parv))
+# 			tr <- persoConv(xraw@scantime, parv, type = "gaussian")
+# 			mat_eff <- -matrix_effect(tr, parm[1], parm[2])
+# 			fitted <- (tr + mat_eff) * hi
+# 			multiplier[i] <- max(fitted) / hi
+# 			if (graphical) {
+# 				plot(xraw@scantime, tMat[, i], type = "l")
+# 				lines(xraw@scantime, fitted, col = "red")
+# 				lines(xraw@scantime, mat_eff + 1, col = "blue")
+# 				lines(xraw@scantime, tr , col = "green")
+# 			}
+# 		}
+# 		TP <- persoConv(xraw@scantime, p = parv)
+# 		tMat <- tMat %*% diag(multiplier)
+# 		if(graphical){
+# 			matplot(
+# 				tMat,
+# 				type = "l",
+# 				col = rainbow(
+# 					n,
+# 					start = 0.25,
+# 					end = 0.6,
+# 					alpha = 0.5
+# 				),
+# 				xlab = "Scan",
+# 				ylab = "Intensity",
+# 				main = paste("Regressed injection peak for",
+# 							 getRawName(xraw@filepath))
+# 			)
+# 			lines(TP, col = "red", lwd = 2)
+# 			legend("topright",
+# 				   c("regressed signal"),
+# 				   col = "red",
+# 				   lty = 1)
+# 		}
+# 		return(TP)
+# 	}
+
+
+
+
+
+matResidualsLikehood <- function(mpp,
+			 xx,
+			 observed,
+			 type = "gaussian",
+			 n,
+			 beginning,
+			 weigth,noisefunction) {
+		mu <- rep(mpp[1], n)
+		sigma <- rep(mpp[2], n)
+		tau <- rep(mpp[3], n)
+		a <- mpp[4:(3 + n)]
+		b <- mpp[(4 + n):(3 + 2 * n)]
+		h <- mpp[(4 + 2 * n):(3 + 3 * n)]
+		matpar <- matrix(c(mu, sigma, tau, a, b, h), ncol = 6)
+		trmat <- apply(matpar, 1, persoConv, time = xx)
+		mmareffect <- sapply(1:ncol(trmat), function(x, va, vb, mat) {
+			a <- va[x]
+			b <- vb[x]
+			- matrix_effect(mat[, x], a, b)
+		}, mat = trmat, va = a, vb = b)
+		trmatres <- t(t(trmat + mmareffect) * h)
+		
+		LL<-function(diff){
+			R = sum(log10(sapply(diff,dnorm)))
+		}
+		
+		
+		
+		
+		matdiff <- observed - trmatres
+		
+		
+		###Noise estimation function.
+		
+		matdiff <- matdiff * weigth
+		return(matdiff)
+	}
 
 ###Wrapper for parallelism
 openAndFindPeaks <- function(fname, ppm, es = es, ...) {

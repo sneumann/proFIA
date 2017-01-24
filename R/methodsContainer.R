@@ -59,12 +59,14 @@ acquisitionDirectory <- function(files = NULL) {
     )
     ##Making absolute data.frame
     #lg <- file.path(getwd(),lg)
-    return(data.frame(
-        rname <- as.character(lg),
-        group <- as.factor(basename(groupf)),
-        stringsAsFactors =
-            FALSE
-    ))
+    df <- data.frame(
+    	rname <- as.character(lg),
+    	group <- as.factor(basename(groupf)),
+    	stringsAsFactors =
+    		FALSE
+    )
+    colnames(df) <- c("path","class")
+    return(df)
 }
 
 
@@ -269,7 +271,7 @@ proFIAset <-
         if (noiseEstimation) {
             if (parallel & requireNamespace("BiocParallel")) {
                 message("Package BiocParallel used.")
-                nes <- estimateNoiseListFiles(
+                nes <- estimateNoiseMS(
                     pFIA@classes[, 1],
                     ppm = ppm,
                     parallel = parallel,
@@ -283,7 +285,7 @@ proFIAset <-
                         "BioCParallel package is not installed, impossible to use parallelism. Single core is used."
                     )
                 }
-                nes <- estimateNoiseListFiles(pFIA@classes[, 1],
+                nes <- estimateNoiseMS(pFIA@classes[, 1],
                                              ppm = ppm,
                                              parallel =
                                                  FALSE,
@@ -398,9 +400,9 @@ setGeneric("group.FIA", function(object, ...)
 #' @export
 #'
 #' @param object A proFIAset object.
-#' @param ppm The estimated accuraccy of the mass spectrometer
-#' given in ppm, this parameter is supposed to be smaller
-#' than the ppm parameter than in the \code{\link{proFIAset}} function
+#' @param ppmgroup A ppm parameter giving the size of the windows
+#' considered, we recommend to use 0.5*ppm where ppm is the pp parameter
+#' of band detection in the \code{\link{proFIAset}} function.
 #' @param nPoints the number of points used on the density, this parameter
 #' only needs to be changed if the number of group found seems small.
 #' @param sleep If not 0 densities are plotted every \code{sleep} ms.
@@ -419,11 +421,11 @@ setGeneric("group.FIA", function(object, ...)
 #' ppmgroup<-1
 #' fracGroup<-0.2
 #'
-#' plasSet<-group.FIA(plasSet,ppm=ppmgroup,fracGroup=fracGroup)
+#' plasSet<-group.FIA(plasSet,ppmgroup=ppmgroup,fracGroup=fracGroup)
 #' plasSet
 #' }
 setMethod("group.FIA", "proFIAset", function(object,
-                                             ppm,
+                                             ppmgroup,
                                              solvar = FALSE,
                                              nPoints = 1024,
                                              sleep = 0,
@@ -442,7 +444,7 @@ setMethod("group.FIA", "proFIAset", function(object,
     lwd_vec <- NULL
     mzrange <- range(peaksL[, "mz"])
     #1500 is thet maximum mass of a metabolite. 1024 the number of points used in the density
-    inter <- mzrange[2] * ppm * nPoints / (20 * 10 ^ 6)
+    inter <- mzrange[2] * ppmgroup * nPoints / (20 * 10 ^ 6)
     message(
         "A mass interval of ",
         sprintf("%0.4f", inter),
@@ -506,7 +508,7 @@ setMethod("group.FIA", "proFIAset", function(object,
         pos <- pos + 1
         
         ###Determining hte base of the signal to skip for a resolution.
-        bw <- 5 * massInter[i] * ppm / (10 ^ 6)
+        bw <- 5 * massInter[i] * ppmgroup / (10 ^ 6)
         if (bw > inter / 4) {
             warning(
                 "Interval for grouping seems to short. Increase the inter parameter or modify the resolution parameter"
@@ -705,9 +707,9 @@ getUniqueIds <- function(ids){
 	lab <- names(tid)
 	if(length(pmul)>0){
 		for(i in 1:length(pmul)){
-			posok= which(ids == lab[pmul[i]])
-			labvec=paste(ids[posok],c('',paste('_',2:(tid[pmul[i]]),sep="")),sep = "")
-			ids[posok]=labvec
+			posok <- which(ids == lab[pmul[i]])
+			labvec <- paste(ids[posok],c('',paste('_',2:(tid[pmul[i]]),sep="")),sep = "")
+			ids[posok] <- labvec
 		}
 	}
 	ids
@@ -883,12 +885,20 @@ setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
     if(k==1){
         warning("It is strongly discouraged to do 1-nearest neighbour.")
     }
-    mdataMatrix <- t(dataMatrix(object))
+	###WE DO THE WKNN ON THE VARIABLE.
+    mdataMatrix <- dataMatrix(object)
     counterror <- 0
     cdat <- mdataMatrix
+    ###We first rescale the data
+    mdataMatrix <- t(apply(mdataMatrix,1,function(x){
+    	x/max(max(x),1)
+    }))
+    
     knntab <- get.knn(mdataMatrix, k = min(k * 5, floor(nrow(mdataMatrix) / 2))) ###Supposition that there is less than 50% missing values.
     ###For each varaible getting the concerned element
     matcoef <- knntab$nn.dist
+    
+    ###Handling the case where the signal is never found.
     matcoef <- matcoef / apply(matcoef, 1, function(x) {
         if (any(x != 0)) {
             return(sum(x))
@@ -907,7 +917,7 @@ setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
                 next
             }
             toUse <- toUse[1:min(k, length(toUse))]
-            ncoef <- matcoef[i, toUse] / sum(matcoef[i, toUse])
+            ncoef <- 1-matcoef[i, toUse] / max(matcoef[i, toUse])
             toUse <- knntab$nn.index[i,toUse]
             nvalue <- sum(ncoef * mdataMatrix[toUse, j])
             cdat[i, j] <- nvalue
@@ -915,7 +925,7 @@ setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
     }
     if (counterror > 1)
         message(paste(counterror, "variables could not be imputated."))
-    object@dataMatrix <- t(cdat)
+    object@dataMatrix <- cdat
     object@step <- "Fillpeaks"
     object
 })
@@ -1080,7 +1090,7 @@ setGeneric("exportVariableMetadata", function(object, ...)
 setMethod("exportVariableMetadata", "proFIAset", function(object, filename =
                                                               NULL) {
     toExport = data.frame(object@group, stringsAsFactors = FALSE)
-    toExport["variableID"] = row.names(object@dataMatrix)
+    toExport["variableID"] = getUniqueIds(row.names(object@dataMatrix))
     if (!is.null(filename)) {
         write.table(
             toExport,
@@ -1238,7 +1248,7 @@ setMethod("plotEICs", "proFIAset", function(object,
     ileg <- NULL
     if (length(unique(object@classes[subsample, 2])) == 1) {
         colvec <- rainbow(length(subsample))
-        colleg <- unique(object@classes[subsample, 2])
+        colleg <- rainbow(length(subsample))
     } else{
         colvec  <-  makeSeparateColors(object@classes[, 2])[subsample]
         colleg <- unique(object@classes[subsample, 2])
@@ -1263,7 +1273,7 @@ setMethod("plotEICs", "proFIAset", function(object,
         }
         plot(
             NULL,
-            xlab  =  "Time(s)",
+            xlab  =  "Time (s)",
             ylab  =  "Intensity",
             main  =  mtitle,
             xlim  =  c(0, maxx),
@@ -1274,7 +1284,7 @@ setMethod("plotEICs", "proFIAset", function(object,
         }
         ###Adding the legend.
         if (length(unique(object@classes[subsample, 2])) == 1) {
-            legend(posleg,as.character(unique(object@classes[subsample, 2])))
+            legend(posleg,as.character(proFIA:::getRawName(object@classes[subsample, 1]))[pok],lty=rep(1,length(subsample))[pok],col=colvec[pok])
         } else{
             legend(posleg,as.character(unique(object@classes[subsample, 2])),lty=rep(1,length(unique(object@classes[subsample, 2]))),col = 
                        colvec[ileg])
@@ -1341,7 +1351,7 @@ setMethod("plotInjectionPeaks", "proFIAset", function(object, subsample =
     }
     plot(
         NULL,
-        xlab = "Time(s)",
+        xlab = "Time (s)",
         ylab = "Injection Peak",
         main = mtitle,
         xlim = rangex,
@@ -1678,7 +1688,7 @@ plotVoidRaw <-
             vtime,
             mz,
             main = title,
-            xlab = "Time(s)",
+            xlab = "Time (s)",
             ylab = "m/z",
             cex = size,
             col = vcol,
@@ -1844,7 +1854,7 @@ setMethod("exportExpressionSet", "proFIAset",
     if(!all(colgroup %in% colnames(object@group))) stop("Elements of colgroup are supposed to be the column
                                                         names of the group table of the proFIAset object.")
     fData <- as.data.frame(object@group[,colgroup])
-    row.names(fData) <- paste("M", sprintf("%0.4f", object@group[, 1]), sep = "")
+    row.names(fData) <- getUniqueIds(paste("M", sprintf("%0.4f", object@group[, 1]), sep = ""))
     vecLab <- sapply(colgroup,keysVariableMetadata)
     metaData<-data.frame(labelDescription=vecLab)
     eset <- ExpressionSet(object@dataMatrix,featureData=AnnotatedDataFrame(data=fData, varMetadata=metaData))
@@ -1884,7 +1894,7 @@ setGeneric("exportPeakTable", function(object, ...)
 #' }
 setMethod("exportPeakTable", "proFIAset", 
           function(object,colgroup=c("mzMed","corMean","meanSolvent","SigSolMean","shifted"),
-                   mval=c("NA","zero"),filename=NULL){
+                   mval=c("zero","NA"),filename=NULL){
               mval <- match.arg(mval)
               def <- 0
               if(mval=="NA") def=NA
@@ -1903,7 +1913,7 @@ setMethod("exportPeakTable", "proFIAset",
                   peaktable[,1:ncol(object@dataMatrix)][p0]<-def
               }
               colnames(peaktable)<-vcnames
-              rownames(peaktable)<-rownames(object@dataMatrix)
+              rownames(peaktable)<-getUniqueIds(rownames(object@dataMatrix))
               if(!is.null(filename)){
                   cpeak <- c("id",colnames(peaktable))
                   ctable <- cbind(rownames(peaktable),peaktable)

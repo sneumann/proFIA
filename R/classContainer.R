@@ -52,7 +52,7 @@
 #' @slot dataMatrix A matrix variables x experiments suitable for
 #' statistical analysis.
 #' @slot noiseEstimation A model of noise as estimated by
-#' \link{estimateNoiseListFiles}
+#' \link{estimateNoiseMS}
 #' @slot injectionPeaks A list of the injection peak which have been
 #' detected for each experiment.
 #' @slot injectionScan A numeric vector giving the scan of injection of

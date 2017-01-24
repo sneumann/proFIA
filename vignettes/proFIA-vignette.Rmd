@@ -137,7 +137,7 @@ The second step of the workflow consists in matching the signals between the
 samples. The `group.FIA` methods uses an estimation of the density in the mass
 dimension. The two important parameters are:
 
-* `ppm` (numeric): accuracy of the mass spectrometer; must be inferior or equal
+* `ppmgroup` (numeric): accuracy of the mass spectrometer; must be inferior or equal
 to the corresponding value in `proFIAset`,
 
 * `fracGroup` (numeric): minimum fraction of samples with detected peaks in at
@@ -151,7 +151,7 @@ ppmgroup <- 1
 fracGroup <- 0.2
 
 # grouping
-plasSet <- group.FIA(plasSet, ppm=ppmgroup, fracGroup=fracGroup)
+plasSet <- group.FIA(plasSet, ppmgroup=ppmgroup, fracGroup=fracGroup)
 ```
 
 The groups may be visualized using the **plotEICs** function, which take as input a mass and a ppm tolerance, or an index.		

@@ -6,15 +6,15 @@
 \alias{group.FIA,proFIAset-method}
 \title{Group the peaks of an FIA acquisition.}
 \usage{
-\S4method{group.FIA}{proFIAset}(object, ppm, solvar = FALSE, nPoints = 1024,
-  sleep = 0, fracGroup = 0.5)
+\S4method{group.FIA}{proFIAset}(object, ppmgroup, solvar = FALSE,
+  nPoints = 1024, sleep = 0, fracGroup = 0.5)
 }
 \arguments{
 \item{object}{A proFIAset object.}
 
-\item{ppm}{The estimated accuraccy of the mass spectrometer
-given in ppm, this parameter is supposed to be smaller
-than the ppm parameter than in the \code{\link{proFIAset}} function}
+\item{ppmgroup}{A ppm parameter giving the size of the windows
+considered, we recommend to use 0.5*ppm where ppm is the pp parameter
+of band detection in the \code{\link{proFIAset}} function.}
 
 \item{solvar}{Shall the group corresponding to solvent signal be kept.
 Default is no.}
@@ -44,7 +44,7 @@ data(plasSet)
 ppmgroup<-1
 fracGroup<-0.2
 
-plasSet<-group.FIA(plasSet,ppm=ppmgroup,fracGroup=fracGroup)
+plasSet<-group.FIA(plasSet,ppmgroup=ppmgroup,fracGroup=fracGroup)
 plasSet
 }
 }

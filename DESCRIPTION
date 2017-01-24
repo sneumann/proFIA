@@ -1,7 +1,7 @@
 Package: proFIA
 Type: Package
 Title: Preprocessing of FIA-HRMS data
-Version: 1.1.1
+Version: 1.1.2
 Date: 2016-05-04
 Author: Alexis Delabriere and Etienne Thevenot.
 Maintainer: Alexis Delabriere <alexis.delabriere@cea.fr>
@@ -17,6 +17,7 @@ Imports:
     grDevices,
     methods,
     pracma,
+    maxLik,
     Biobase,
     FNN,
     minpack.lm,

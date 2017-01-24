@@ -293,24 +293,41 @@ setMethod("fitModel", "noiseEstimation", function(object,
         }
     } else if (modelType == "plinear") {
         object@estimation <- function(x) {
-            cBin = .bincode(x, object@bins)
-            if (is.na(cBin)) {
-                return(0)
-            }
-            vIntens <- object@varmean[c(cBin, cBin + 1)]
-            posSeg <- (x - object@bins[cBin]) / (object@bins[cBin + 1] - object@bins[cBin])
-            return(vIntens[1] + ((vIntens[2] - vIntens[1]) * posSeg))
+        	bmax <- ifelse(x>object@bins[limreg[2]],TRUE,FALSE)
+        	bmin <- ifelse(x<object@bins[limreg[1]],TRUE,FALSE)
+        	pok <- 1:length(x)
+        	if(any(bmin)|any(bmax)){
+        		pok <- pok[-c(bmin,bmax)]
+        	}
+        	
+        	res <- numeric(length(x))
+        	
+        	
+        	if(any(bmin)){
+        		res[bmin] <- object@bins[limreg[1]]
+        	}
+        	if(any(bmax)){
+        		res[bmax] <- object@bins[limreg[2]]
+        	}
+            cbin = .bincode(x[pok], object@bins)
+            posSeg <- (x[pok] - object@bins[cbin]) / (object@bins[cbin + 1] - object@bins[cbin])
+            res[pok] <- object@varmean[cbin]+(object@varmean[cbin+1]-object@varmean[cbin]) * posSeg
+            return(res)
         }
     } else if (modelType == "loess") {
         m.lo <- loess(yvalues ~ xvalues, weights = wvalues)
-        object@estimation <- function(x) {
-            if (x > iilim[2]) {
-                return(0)
+        bins <- getMidBins(object@varmean)
+        object@estimation <- function(x,nullVal=yvalues[limreg[1]]) {
+        	vreturn = predict(m.lo, x)
+        	psup <- which(x > bins[object@reglim[2]])
+            if (length(psup)>0) {
+            	vreturn[psup] <- bins[object@reglim[2]]
             }
-            if (x < iilim[1]) {
-                return(NA)
+        	pmin <- which(x < object@reglim[1])
+            if (length(pmin)>0) {
+            	vreturn[pmin] <- nullVal
             }
-            predict(m.lo, x)
+            return(vreturn)
         }
     }
     object@estimated <- TRUE
@@ -425,7 +442,7 @@ estimateNoiseFile <-
     }
 
 
-#' Estimate the noise of multiple MS acquisition.
+#' Estimate the noise of a mass spectrometer using multiple MS acquisition.
 #'
 #' Determine the variances of the noise in function of the intensity
 #' from multiples FIA acquisitions, using the method from Wentzell and Tarazuk(2014)
@@ -449,9 +466,9 @@ estimateNoiseFile <-
 #' 
 #'   ##For speed purpose
 #'   list_mzml <- list_mzml[1:2]
-#'   es <- estimateNoiseListFiles(list_mzml,2,parallel=FALSE)
+#'   es <- estimateNoiseMS(list_mzml,2,parallel=FALSE)
 #' }
-estimateNoiseListFiles <-
+estimateNoiseMS <-
     function(list_files,
              ppm,
              nBin = 500,
@@ -528,7 +545,7 @@ calcPvalue <- function(nes, intseq, hseq) {
         stop("A model have not been fitted to the data")
     dist <- (intseq - hseq)
     #cat(dist,"\n")
-    hvar <- sapply(hseq, nes@estimation)
+    hvar <- sapply(hseq, nes@estimation, nullVal = NA)
     
     ##Points which haven't any values are not estimated.
     invpos <- which(sapply(hvar, is.na) | hvar < 0)
