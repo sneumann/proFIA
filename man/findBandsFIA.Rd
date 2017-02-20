@@ -5,7 +5,8 @@
 \title{Detect band in a FIA acquisition}
 \usage{
 findBandsFIA(xraw, firstScan = 1, lastScan = length(xraw@scantime),
-  ppm = 2, sizeMin = 50, dmz = 5e-04, beginning, nIso = 3)
+  ppm = 2, sizeMin = 50, dmz = 5e-04, beginning = NULL, end = NULL,
+  nIso = 3, fracMin = 0.6)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -21,9 +22,13 @@ findBandsFIA(xraw, firstScan = 1, lastScan = length(xraw@scantime),
 \item{dmz}{The minimum mass tolerance,useful for small masses}
 
 \item{beginning}{The scan of the injection. May be determined using 
-\code{\link{determiningSizePeak.Geom}}.}
+\code{\link{determiningInjectionZone}}.}
 
-\item{nIso}{the minimum number of consecutive point for a signal to be considered as 
+\item{end}{The end of injection, may be estimated using \code{\link{determiningInjectionZone}}.}
+
+\item{nIso}{The minimum number of consecutive points for a signal to be detected.}
+
+\item{fracMin}{The minimum fraction of points necessary in beginning:end for a signal to be detected.
 contaminated by solvent.}
 }
 \value{
@@ -42,10 +47,10 @@ if(require(plasFIA)){
   xraw<-xcmsRaw(path_raw)
 
   #Getting the injection scan
-  gp<-determiningSizePeak.Geom(xraw)
+  gp<-determiningInjectionZone(xraw)
 
   #performing band detection.
-  tbands<-findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1])
+  tbands<-findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1],end=gp[2])
   head(tbands)
 }
 }

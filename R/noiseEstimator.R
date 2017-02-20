@@ -75,7 +75,7 @@ interToRegress <- function(object,
     plmin <- NULL
     ###Implement th enon loess method.
     if (is.null(thresh)) {
-        mag <- movavg(try[1:plsup], 7, type = "s")
+        mag <- movavg(try[1:plsup], min(7,floor(plsup)/2), type = "s")
         mag <- mag[3:(length(mag) - 2)]
         plmin <- which.min(mag) + 2
         
@@ -142,7 +142,7 @@ plotNoise <- function(object,
     
     ##Determining the position of cutting.
     
-    vBins <- object@bins[-length(object@bins)]
+    vBins <- getMidBins(object@bins)
     if (object@estimated)
         main <- paste(main, "and fitted model")
     
@@ -194,7 +194,7 @@ plotNoise <- function(object,
     vtexleg <- c("Estimated variance(most numerous)",
                 "Estimated variance(less numerous)")
     vcolleg <- colv[c(1, 50)]
-    vltyleg <- c(NA, NA)
+    vltyleg <- c(FALSE, FALSE)
     vpchleg <- c(19, 19)
     
     
@@ -242,7 +242,7 @@ setMethod("fitModel", "noiseEstimation", function(object,
                                                       c("loess", "polynom", "plinear"),
                                                   weighted = FALSE,
                                                   threshold = NULL,
-                                                  quant = 0.95) {
+                                                  quant = 0.95, absThreshold = NULL) {
     modelType <- match.arg(modelType)
     xvalues <- getMidBins(object@bins)
     yvalues <- object@varmean
@@ -258,12 +258,22 @@ setMethod("fitModel", "noiseEstimation", function(object,
         vsize <- vsize[-c(1, p0)]
     }
     ###Determining the injection model.
-    beginning <- object@varmean[1]
+    beginning <- object@varmean[2]
     yvalues <- yvalues - beginning
     
     
     ###Cutting the vector on which do th regression
     limreg <- interToRegress(object, quant, threshold)
+    
+    if(!is.null(absThreshold)){
+    	pLim <- which(xvalues>absThreshold)
+    	if(length(pLim)==0){
+    		stop("Absolute noise threshold is too high, no point considered for regression.")
+    	}
+    	pLim <- pLim[1]
+    	limreg[1] <- max(limreg[1],pLim[1])
+    }
+    
     iilim = xvalues[c(limreg[1], limreg[2])]
     #print(limreg)
     
@@ -312,22 +322,22 @@ setMethod("fitModel", "noiseEstimation", function(object,
             cbin = .bincode(x[pok], object@bins)
             posSeg <- (x[pok] - object@bins[cbin]) / (object@bins[cbin + 1] - object@bins[cbin])
             res[pok] <- object@varmean[cbin]+(object@varmean[cbin+1]-object@varmean[cbin]) * posSeg
-            return(res)
+            return(res+beginning)
         }
     } else if (modelType == "loess") {
         m.lo <- loess(yvalues ~ xvalues, weights = wvalues)
-        bins <- getMidBins(object@varmean)
+        bins <- getMidBins(object@bins)
         object@estimation <- function(x,nullVal=yvalues[limreg[1]]) {
         	vreturn = predict(m.lo, x)
         	psup <- which(x > bins[object@reglim[2]])
             if (length(psup)>0) {
-            	vreturn[psup] <- bins[object@reglim[2]]
+            	vreturn[psup] <- object@varmean[object@reglim[2]]
             }
         	pmin <- which(x < object@reglim[1])
             if (length(pmin)>0) {
             	vreturn[pmin] <- nullVal
             }
-            return(vreturn)
+            return(vreturn+beginning)
         }
     }
     object@estimated <- TRUE
@@ -345,9 +355,18 @@ estimateNoiseFile <-
                  FALSE,
              maxInt = NULL,
              minInt = NULL,
+    		 includeLowest=TRUE,
              ...) {
-        xraw <- xcmsRaw(fname)
-        sizepeak <- determiningSizePeak.Geom(xraw, graphical = FALSE, ...)
+    	if(length(fname)>1){
+    		stop("To estimate the noise on more than one file use estimateNoiseMS.")
+    	}
+    	xraw <- NULL
+    	if(class(fname)=="character"){
+    		xraw <- xcmsRaw(fname)
+    	}else{
+    		xraw <- fname
+    	}
+        sizepeak <- determiningInjectionZone(xraw, graphical = FALSE, ...)
         
         ###Checking if the sizepeak algorithm is bad.
         
@@ -357,9 +376,11 @@ estimateNoiseFile <-
             firstScan = 1,
             lastScan = length(xraw@scantime),
             ppm = ppm,
-            sizeMin = (sizepeak[3] - sizepeak[1]),
+            sizeMin = (sizepeak[3] - sizepeak[1])*0.5,
             dmz = 0.0005,
-            beginning = sizepeak[1]
+            beginning = sizepeak[1],
+            end=sizepeak[2],
+            fracMin = 0.25
         )
         denoising <- match.arg(denoising)
         funcName <- paste("smooth.", denoising, sep = "")
@@ -373,7 +394,9 @@ estimateNoiseFile <-
             minInt <- max(xraw@env$intensity)
         #cat("minInt ",minInt,"maxInt",maxInt,"\n")
         binlim <- makeBins(nbin + 1, minInt, maxInt)
+        if(includeLowest){
         binlim[1] <- 0
+        }
         binlim[length(binlim)] <- max(maxInt, binlim[length(binlim)]) + 1
         matres <-
             matrix(0,
@@ -455,6 +478,7 @@ estimateNoiseFile <-
 #' @param nBin The number of intensity bins to be used.
 #' @param minInt The  minimum intensity expected in all the files.
 #' @param maxInt The  maximum intensity expected in all the files.
+#' @param includeZero Should the left bin start a 0.
 #' @param parallel Shall parrallelism be used.
 #' @param BPPARAM A BiocParallelParam object to be used for parallelism
 #' if parallel is TRUE.
@@ -475,6 +499,7 @@ estimateNoiseMS <-
              minInt = 500,
              maxInt = 10 ^ 8,
              parallel,
+    		 includeZero=TRUE,
              BPPARAM = NULL) {
         res = NULL
         if (parallel & requireNamespace("BiocParallel")) {
@@ -488,6 +513,7 @@ estimateNoiseMS <-
                 maxInt = maxInt,
                 minInt =
                     minInt,
+                includeLowest=includeZero,
                 BPPARAM = BPPARAM
             )
             
@@ -506,6 +532,7 @@ estimateNoiseMS <-
                     maxInt = maxInt,
                     minInt =
                         minInt,
+                	includeLowest=includeZero,
                     simplify = FALSE
                 )  
             }
@@ -526,6 +553,12 @@ estimateNoiseMS <-
                                                                                    })
             vSize <- vSize + res[[i]]$size
         }
+        if(!is.character(list_files)){
+        	list_files <- sapply(list_files,function(x){
+        	as.character(x@filepath)
+        		})
+        }
+        
         est <- new("noiseEstimation")
         est@intlim <- c(minInt, maxInt)
         est@varmean <- vInt

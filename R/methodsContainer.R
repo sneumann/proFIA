@@ -276,8 +276,7 @@ proFIAset <-
                     ppm = ppm,
                     parallel = parallel,
                     BPPARAM = BPPARAM,
-                    maxInt=vmint,
-                    ...
+                    maxInt=vmint
                 )
             } else{
                 if (parallel) {
@@ -288,11 +287,10 @@ proFIAset <-
                 nes <- estimateNoiseMS(pFIA@classes[, 1],
                                              ppm = ppm,
                                              parallel =
-                                                 FALSE,
-                                             ...)
+                                                 FALSE)
             }
         }
-        nes <- fitModel(nes)
+        nes <- fitModel(nes,absThreshold = NULL)
         if(graphical){
             plotNoise(nes)
         }
@@ -1166,11 +1164,12 @@ setGeneric("plotEICs", function(object, ...)
 #' the research use the \code{\link{findMzGroup}} function.
 #' @param subsample A subset of sample to be plotted.
 #' @param ppm The tolerance for the research if mz is furnished.
-#' @param scaled Shall all the EIC be put on the same scale with maximum to 1.
 #' @param margin An area outer the EICs mz range on which the EIC may be extended.
-#' @param ...  Supplementary graphical parameters to be passed to lines.
 #' @param posleg The position of the legend on the figure. See \code{\link[graphics]{legend}}.
 #' @param title An optional vector of title for the plot. Need to be of the same
+#' @param scaled Shall all the EIC be put on the same scale with maximum to 1.
+#' @param area Shall the detectged area be plotted using transparency.
+#' @param ...  Supplementary graphical parameters to be passed to lines.
 #' length than index.
 #' @aliases plotEICs plotEICs,proFIAset-method
 #' @return  No returned value
@@ -1189,7 +1188,7 @@ setMethod("plotEICs", "proFIAset", function(object,
                                             posleg=c("topright","bottomright", "bottom",
                                                      "bottomleft", "left", "topleft",
                                                      "top", "right", "center"),title=NULL,
-                                            scaled=FALSE,...) {
+                                            scaled=FALSE,area=FALSE,...) {
     posleg <- match.arg(posleg)
     if(!(object@step %in% c("Samples_grouped","Matrix_created","Fillpeaks"))){
         stop("Peaks needs to be grouped before plotting the EICs, see ?group.FIA.")
@@ -1255,6 +1254,17 @@ setMethod("plotEICs", "proFIAset", function(object,
         ileg <- match(unique(object@classes[subsample, 2]),object@classes[subsample, 2])
         ileg <- floor((ileg+c((ileg[-1]-1),length(subsample)))/2)
     }
+    ###Now we create the area color if necessary 
+    colarea <- NULL
+    if(area){
+    	colarea <- col2rgb(colvec)
+    	colarea <- apply(colarea,2,function(x){
+    		rgb(x[1],x[2],x[3],80,maxColorValue = 255)
+    	})
+    }
+    
+    
+    
     maxx  <-  max(unlist(sapply(vall, function(x) {
         x$scantime
     })))
@@ -1271,6 +1281,8 @@ setMethod("plotEICs", "proFIAset", function(object,
         }else{
             mtitle <- title[i]
         }
+        
+        
         plot(
             NULL,
             xlab  =  "Time (s)",
@@ -1281,6 +1293,11 @@ setMethod("plotEICs", "proFIAset", function(object,
         )
         for (j in 1:length(pok)) {
             lines(vall[[pok[j]]]$scantime, vall[[pok[j]]][[i]], col = colvec[pok[j]])
+        	if(area){
+        		sx <- c(vall[[pok[j]]]$scantime,rev(vall[[pok[j]]]$scantime))
+        		sy <- c(vall[[pok[j]]][[i]],rep(0,length(vall[[pok[j]]][[i]])))
+        		polygon(sx,sy,col=colarea[pok[j]])
+        	}
         }
         ###Adding the legend.
         if (length(unique(object@classes[subsample, 2])) == 1) {

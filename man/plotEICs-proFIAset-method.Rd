@@ -9,7 +9,7 @@
 \S4method{plotEICs}{proFIAset}(object, index = NULL, mz = NULL,
   subsample = NULL, ppm = 5, margin = 2e-04, posleg = c("topright",
   "bottomright", "bottom", "bottomleft", "left", "topleft", "top", "right",
-  "center"), title = NULL, scaled = FALSE, ...)
+  "center"), title = NULL, scaled = FALSE, area = FALSE, ...)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -27,12 +27,14 @@ the research use the \code{\link{findMzGroup}} function.}
 
 \item{posleg}{The position of the legend on the figure. See \code{\link[graphics]{legend}}.}
 
-\item{title}{An optional vector of title for the plot. Need to be of the same
-length than index.}
+\item{title}{An optional vector of title for the plot. Need to be of the same}
 
 \item{scaled}{Shall all the EIC be put on the same scale with maximum to 1.}
 
-\item{...}{Supplementary graphical parameters to be passed to lines.}
+\item{area}{Shall the detectged area be plotted using transparency.}
+
+\item{...}{Supplementary graphical parameters to be passed to lines.
+length than index.}
 }
 \value{
 No returned value

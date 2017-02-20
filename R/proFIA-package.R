@@ -14,7 +14,7 @@
 #' @importFrom FNN get.knn
 #' @importFrom maxLik maxLik
 #' @importFrom pracma pinv
-#' @importFrom grDevices colorRampPalette rainbow as.raster
+#' @importFrom grDevices colorRampPalette rainbow as.raster col2rgb rgb
 #' @importFrom graphics abline legend lines matplot plot
 #'     points polygon layout rasterImage text
 #' @importFrom methods new

@@ -4,8 +4,8 @@
 \alias{getInjectionPeak}
 \title{Fit an injection peak to an FIA acquisition.}
 \usage{
-getInjectionPeak(xraw, bandlist = NULL, sec = 2, iquant = 0.95,
-  gpeak = NULL, graphical = FALSE)
+getInjectionPeak(xraw, bandlist, sec = 2, iquant = 0.95, gpeak = NULL,
+  selIndex = NULL, graphical = FALSE)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -20,6 +20,8 @@ would not be used for peak determination.}
 
 \item{gpeak}{An approximation of the injection peak, if NULL
 determining sizepeak.Geom will be used.}
+
+\item{selIndex}{A seleciton of index to make the regression. We recommend to let it to NULL.}
 
 \item{graphical}{shald the individually fitted components be plotted.}
 }
@@ -40,10 +42,10 @@ if(require(plasFIA)){
   xraw <- xcmsRaw(path_raw)
 
   #Getting the injection scan
-  gp <- determiningSizePeak.Geom(xraw)
+  gp <- determiningInjectionZone(xraw)
 
   #performing band detection.
-  tbands <- findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1])
+  tbands <- findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1],end=gp[2])
 
   #Getting the injection peak
   vpeak <- getInjectionPeak(xraw,bandlist=tbands,gpeak=gp)

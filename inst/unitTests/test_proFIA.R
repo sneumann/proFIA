@@ -40,10 +40,10 @@ test_findFIASignal<-function(){
     data(plasSet)
     xraw=xcms:::xcmsRaw(plasSet@classes[2,1])
     tp=invisible(findFIASignal(xraw,ppm=2,es=plasSet@noiseEstimation,pvalthresh=0.01))
-    checkEquals(tp$injscan,14)
+    checkEquals(tp$injscan,18)
     ##Differnece of minpack.lm on Linux.
-    checkEqualsNumeric(sum(tp$injpeak),31.82998,tolerance=0.2)
-    checkEqualsNumeric(nrow(tp$matrix),393,tolerance=0.01)
+    checkEqualsNumeric(sum(tp$injpeak),27.55489,tolerance=0.2)
+    checkEqualsNumeric(nrow(tp$matrix),358,tolerance=0.05)
     }
 }
 
@@ -51,6 +51,6 @@ test_group.FIA<-function(){
     if(require(plasFIA)){
     data(plasSet)
     tg=proFIA:::group.FIA(plasSet,ppmgroup=0.5,fracGroup=1)
-    checkEquals(nrow(tg@group),152)
+    checkEquals(nrow(tg@group),145)
     }
 }

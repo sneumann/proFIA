@@ -11,8 +11,10 @@
 #' @param sizeMin The minimum size of a band.
 #' @param dmz The minimum mass tolerance,useful for small masses
 #' @param beginning The scan of the injection. May be determined using 
-#' \code{\link{determiningSizePeak.Geom}}.
-#' @param nIso the minimum number of consecutive point for a signal to be considered as 
+#' \code{\link{determiningInjectionZone}}.
+#' @param end The end of injection, may be estimated using \code{\link{determiningInjectionZone}}.
+#' @param nIso The minimum number of consecutive points for a signal to be detected.
+#' @param fracMin The minimum fraction of points necessary in beginning:end for a signal to be detected.
 #' contaminated by solvent.
 #' @return A vector contaning the inject peak
 #' @aliases findBandsFIA
@@ -25,10 +27,10 @@
 #'   xraw<-xcmsRaw(path_raw)
 #' 
 #'   #Getting the injection scan
-#'   gp<-determiningSizePeak.Geom(xraw)
+#'   gp<-determiningInjectionZone(xraw)
 #' 
 #'   #performing band detection.
-#'   tbands<-findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1])
+#'   tbands<-findBandsFIA(xraw,ppm = 2,sizeMin = gp[3]-gp[1],beginning=gp[1],end=gp[2])
 #'   head(tbands)
 #' }
 findBandsFIA <-
@@ -38,8 +40,15 @@ findBandsFIA <-
              ppm = 2,
              sizeMin = 50,
              dmz = 0.0005,
-             beginning,
-             nIso = 3) {
+             beginning=NULL,
+    		 end=NULL,
+             nIso = 3,
+    		 fracMin = 0.6) {
+    	if(is.null(beginning)|is.null(end)){
+    		vp <- determiningInjectionZone(xraw)
+    		beginning <- ifelse(is.null(beginning),vp[1],beginning)
+    		end <- ifelse(is.null(end),vp[2],end)
+    	}
 
         mz <- as.numeric(xraw@env$mz)
         int <- as.numeric(xraw@env$intensity)
@@ -51,10 +60,12 @@ findBandsFIA <-
         ppm_dev <- as.numeric(ppm)
         sM <- as.integer(sizeMin)
         beginning <- as.integer(beginning)
+        end <- as.integer(end)
         nIso <- as.integer(nIso)
         Dmz <- as.numeric(dmz)
+        Fmin <- as.numeric(fracMin)
         #cat("ppm :",ppm_dev,"dmz :",Dmz,"nmz",length(mz),"flmscans ",fS,lS,mS,"\n")
-        message("Beginning band detection.")
+        message(paste("Beginning band detection for ",getRawName(xraw@filepath),"\n",sep=""))
         to_return <- .Call(
             "findBandsFIACentroids",
             mz,
@@ -68,8 +79,10 @@ findBandsFIA <-
             ppm_dev,
             nIso,
             beginning,
+            end,
             sM,
             Dmz,
+            Fmin,
             PACKAGE = "proFIA"
         )
         colnames(to_return) <-

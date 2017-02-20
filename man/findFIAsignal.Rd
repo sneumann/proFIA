@@ -6,9 +6,10 @@
 \title{Detect peaks in an FIA acquisition.}
 \usage{
 findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
-  solint = c("poly", "substract", "keep"), dmz = 5e-04, graphical = FALSE,
-  SNT = NULL, f = c("regression", "TIC"), pvalthresh = NULL,
-  scanmin = 1, scanmax = length(xraw@scantime), ...)
+  solint = c("poly", "substract", "add"), fullInteg = FALSE, dmz = 5e-04,
+  graphical = FALSE, SNT = NULL, f = c("regression", "TIC"),
+  pvalthresh = NULL, scanmin = 1, scanmax = length(xraw@scantime),
+  fracPoint = 0.3, ...)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -24,7 +25,10 @@ Only their maximum intensiyt will be calculated.}
 
 \item{solint}{How are the intensity of signal with bot solvent and sample
 be treated in the injection zone region, the area of the rectangle
-with peak-width and solvent intensity is considered.
+with peak-width and solvent intensity is considered.}
+
+\item{fullInteg}{If no solvent is detected before the injection,
+should the signals be integrated on the ufll chromatogram.
 \itemize{
     \item poly. Half of this area is kept.
     \item substract. The area is removed substracted.
@@ -50,7 +54,10 @@ a noise model is furnished.}
 
 \item{scanmax}{The last scan to consider.}
 
-\item{...}{more arguments to be passed to the \link{determiningSizePeak} function.}
+\item{fracPoint}{A filter on the number of point found in a band. 0.3 by default to allow matrix
+effect.}
+
+\item{...}{more arguments to be passed to the \link{determiningInjectionZone} function.}
 }
 \value{
 A numeric matrix with the following column
@@ -91,7 +98,7 @@ if(require(plasFIA)){
   data(plasSet)
   es<-attr(plasSet,"noiseEstimation")
 
-  #Getting the signal with a noise model. 
+  #Getting the signal with a noise model.
   tsignal<-findFIASignal(xraw,ppm=2,es=es,pvalthresh=0.005)
   head(tsignal)
 }

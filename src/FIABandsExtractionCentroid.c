@@ -11,7 +11,7 @@ and then to rely line by lines all those peaks
 #define ALLOCATION_INCREMENT 2
 #define MULTIPLIER_NUM_SCAN 1.5
 #define DEBUGGING 0
-#define MAX_BAND 5
+#define MAX_BAND 8
 #define NUM_EXCEPT 3
 
 
@@ -657,7 +657,7 @@ void fuseBandList(struct bandList * bL,double ppm,int first_scan, int max_scan, 
 **/
 
 //Quick clean up to remove at least the lvl 1 of the peaks.
-void cleanUpBandList(struct bandList * bL,int size_min,double * scantime)
+void cleanUpBandList(struct bandList * bL,int size_min, int injsc, int injend,double frac_min)
 {
     int i=0;
     struct band * posBand =bL->head;
@@ -665,6 +665,9 @@ void cleanUpBandList(struct bandList * bL,int size_min,double * scantime)
     //Loop an all the detected Bands.
     /**TO DEBUG**/
     int counterBand=1;
+    int injSize = injend-injsc+1;
+    int limitInj = ceil(((double)injSize)*frac_min);
+    //Rprintf("limitInj %d and size_min %d\n",limitInj,size_min);
 
     while(1)
     {
@@ -699,7 +702,8 @@ void cleanUpBandList(struct bandList * bL,int size_min,double * scantime)
         int countSize=0;
         int old_scan=posBand->seqCentroid[0].scan;
         int current_scan=posBand->seqCentroid[0].scan;
-        int maxSize=0;
+        int maxSize = 0;
+        int numInj = 0;
         //Loops on all the elements in the bands.
         for(i=0; i<posBand->size; i++)
         {
@@ -724,24 +728,38 @@ void cleanUpBandList(struct bandList * bL,int size_min,double * scantime)
                 countSize++;
 
             }
+            if((current_scan>=injsc) & (current_scan<=injend))
+            {
+                numInj++;
+            }
+
             old_scan=current_scan;
             if(countSize>maxSize)
             {
                 maxSize=countSize;
             }
-
         }
-        if(maxSize<=size_min)
+        //Checking the faction of point present.
+        if(numInj<limitInj)
         {
-            //Rprintf(" %d ",counterBand);
             to_remove=posBand;
             posBand=posBand->nextBand;
             removeBand(bL,to_remove);
         }
         else
         {
-            //posBand->intensity=trapzApprox(posBand,scantime);
-            posBand=posBand->nextBand;
+            if(maxSize<=size_min)
+            {
+                //Rprintf(" %d ",counterBand);
+                to_remove=posBand;
+                posBand=posBand->nextBand;
+                removeBand(bL,to_remove);
+            }
+            else
+            {
+                //posBand->intensity=trapzApprox(posBand,scantime);
+                posBand=posBand->nextBand;
+            }
         }
         //Rprintf(" done\n");
         counterBand++;
@@ -780,10 +798,10 @@ void cleanUpBandList(struct bandList * bL,int size_min,double * scantime)
 
 
 
-SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanTimeVal,SEXP firstScan, SEXP lastScan, SEXP maxScan, SEXP numMz, SEXP vPpm, SEXP nIso, SEXP injSc, SEXP vSizeMin, SEXP vDmz)
+SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanTimeVal,SEXP firstScan, SEXP lastScan, SEXP maxScan, SEXP numMz, SEXP vPpm, SEXP nIso, SEXP injSc,SEXP endInj, SEXP vSizeMin, SEXP vDmz,SEXP rFracMin)
 {
-    double *intensity, *mz, mean_top, mean_bottom, ppm, *scantime, diffmz;
-    int *scanindex, lastscan, nummz, maxscan, firstscan,i,j,size_min, num_iso, injbeginning;
+    double *intensity, *mz, mean_top, mean_bottom, ppm, *scantime, diffmz, frac_min;
+    int *scanindex, lastscan, nummz, maxscan, firstscan,i,j,size_min, num_iso, injbeginning, injend;
     SEXP mat_to_return;
     //clock_t begin,end;
     mz=REAL(mzVal);
@@ -794,10 +812,12 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
     maxscan=INTEGER(maxScan)[0];
     firstscan=INTEGER(firstScan)[0];
     injbeginning=INTEGER(injSc)[0];
+    injend=INTEGER(endInj)[0];
     nummz=INTEGER(numMz)[0];
     ppm=REAL(vPpm)[0];
     scantime=REAL(ScanTimeVal);
     diffmz=REAL(vDmz)[0];
+    frac_min=REAL(rFracMin)[0];
     //SEE IF THIS NEED TO BE PASSED IN PARAMETERS
     size_min=INTEGER(vSizeMin)[0];
     /** SECURITY CHECK **/
@@ -890,13 +910,13 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
     //begin=clock();
     //Rprintf("Beginning of the cleaning and fusing !\n");
     int numFused=0;
-    //fuseBandList(bL,ppm,firstscan,lastscan,scantime,&numFused,diffmz);
+    fuseBandList(bL,ppm,firstscan,lastscan,scantime,&numFused,diffmz);
     //end = clock();
     //time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     //Rprintf("%d bands have been fused %d bands remains , it took %0.3f seconds \n",numFused,bL->size,time_spent);
     //debuggingVizualisation(bL);
     //begin=clock();
-    cleanUpBandList(bL,size_min,scantime);
+    cleanUpBandList(bL,size_min,injbeginning,injend,frac_min);
     //debuggingVizualisation(bL);
 
     fuseBandList(bL,2*ppm,firstscan,lastscan,scantime,&numFused,diffmz);
@@ -1019,14 +1039,17 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
     return(mat_to_return);
 }
 
-double distPointLine2P(double xp,double yp,double x1,double y1,double x2, double y2){
+double distPointLine2P(double xp,double yp,double x1,double y1,double x2, double y2)
+{
     return(fabs(((y2-y1)*xp-(x2-x1)*yp+x2*y1-y2*x1))/sqrt((y2-y1)*(y2-y1)+(x2-x1)*(x2-x1)));
 }
 
 //The douglas peucker algoirthm.
-int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray){
+int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray)
+{
 
-    if(np<=2){
+    if(np<=2)
+    {
         *sarray=2;
         int * vres=malloc(sizeof(int)*2);
         vres[0]=0;
@@ -1038,16 +1061,19 @@ int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray){
     int i,pmax;
     dmax=0;
     pmax=0;
-    for(i=0;i<(np);i++){
+    for(i=0; i<(np); i++)
+    {
         dist=distPointLine2P(x[i],y[i],x[0],y[0],x[np-1],y[np-1]);
         //printf("dist:%d %0.0f  ",i,dist);
-        if(dist>dmax){
+        if(dist>dmax)
+        {
             dmax=dist;
             pmax=i;
         }
     }
     //printf("\n");
-    if(dmax>epsilon){
+    if(dmax>epsilon)
+    {
 
 
         int s1=0,s2=0;
@@ -1056,11 +1082,13 @@ int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray){
         //printf("sum %d %d \n",s1,s2);
         int nsize=s1+s2-1;
         int * res = malloc(sizeof(int)*nsize);
-        for(i=0;i<s1;i++){
+        for(i=0; i<s1; i++)
+        {
             res[i]=v1[i];
             //printf("%d ",res[i]);
         }
-        for(i=1;i<s2;i++){
+        for(i=1; i<s2; i++)
+        {
             res[s1+i-1]=v2[i]+pmax;
             //printf("%d ",res[s1+i-1]);
         }
@@ -1069,7 +1097,9 @@ int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray){
         free(v2);
 
         return(res);
-    }else{
+    }
+    else
+    {
         *sarray=2;
         int * vres=malloc(sizeof(int)*2);
         vres[0]=0;
@@ -1079,7 +1109,8 @@ int * segmentCurve(double * x,double *y, double epsilon,int np,int * sarray){
     }
 }
 
-SEXP segmentCurveW(SEXP x, SEXP y, SEXP epsilon, SEXP n){
+SEXP segmentCurveW(SEXP x, SEXP y, SEXP epsilon, SEXP n)
+{
     SEXP vreturn;
     double *xx,*yy,*eps;
     int *seg,*num;
@@ -1091,7 +1122,8 @@ SEXP segmentCurveW(SEXP x, SEXP y, SEXP epsilon, SEXP n){
     seg=segmentCurve(xx,yy,*eps,*num,&sizeArray);
     PROTECT(vreturn = allocVector(INTSXP,sizeArray));
     int i=0;
-    for(i=0;i<sizeArray;i++){
+    for(i=0; i<sizeArray; i++)
+    {
         INTEGER(vreturn)[i]=seg[i];
     }
     free(seg);
