@@ -193,7 +193,7 @@ plotNoise <- function(object,
     
     vtexleg <- c("Estimated variance(most numerous)",
                 "Estimated variance(less numerous)")
-    vcolleg <- colv[c(1, 50)]
+    vcolleg <- colv[c(1, length(colv))]
     vltyleg <- c(FALSE, FALSE)
     vpchleg <- c(19, 19)
     
@@ -356,6 +356,7 @@ estimateNoiseFile <-
              maxInt = NULL,
              minInt = NULL,
     		 includeLowest=TRUE,
+    		 dmz=0.0005,
              ...) {
     	if(length(fname)>1){
     		stop("To estimate the noise on more than one file use estimateNoiseMS.")
@@ -377,7 +378,7 @@ estimateNoiseFile <-
             lastScan = length(xraw@scantime),
             ppm = ppm,
             sizeMin = (sizepeak[3] - sizepeak[1])*0.5,
-            dmz = 0.0005,
+            dmz = dmz,
             beginning = sizepeak[1],
             end=sizepeak[2],
             fracMin = 0.25
@@ -458,9 +459,7 @@ estimateNoiseFile <-
             }
         })
         vnum[as.numeric(names(tbin))] = tbin
-        return(list(bins = binlim, noisevar = sqrt(vmean), size = as.integer(vnum), function(x) {
-            max(x, 1)
-        }))
+        return(list(bins = binlim, noisevar = sqrt(vmean), size = as.integer(vnum)))
         #return(list(bins=binlim,noisevar=sqrt(vmean),size=as.integer(vnum),vecsd=vvar/sapply((2*sqrt(vmean)),function(x){max(x,1)})))
     }
 
@@ -475,6 +474,7 @@ estimateNoiseFile <-
 #' @param list_files A list of files in which the noise should be estimated.
 #' @param ppm The authorized deviation between scans in ppm, this parameter
 #' will also be used to fuse the bands if there are close enough.
+#' @param dmz The dmz parameters to be passed to findBandsFIA, see \link{findBandsFIA}
 #' @param nBin The number of intensity bins to be used.
 #' @param minInt The  minimum intensity expected in all the files.
 #' @param maxInt The  maximum intensity expected in all the files.
@@ -500,6 +500,7 @@ estimateNoiseMS <-
              maxInt = 10 ^ 8,
              parallel,
     		 includeZero=TRUE,
+    		 dmz=0.0005,
              BPPARAM = NULL) {
         res = NULL
         if (parallel & requireNamespace("BiocParallel")) {
@@ -514,6 +515,7 @@ estimateNoiseMS <-
                 minInt =
                     minInt,
                 includeLowest=includeZero,
+                dmz=dmz,
                 BPPARAM = BPPARAM
             )
             

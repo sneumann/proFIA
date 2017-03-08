@@ -92,7 +92,7 @@ fuseRange <- function(r1, r2, extend = TRUE) {
 #' Detect peaks in an FIA acquisition.
 #'
 #' Detect the peak corresponding to compounds present in the sample
-#' in a Flow Injection Analysis (FIA) acquisition. The item furnished
+#' in a Flow Injection Analysis (FIA) acquisition. The item provided
 #' must be an xcmsRaw object.
 #'
 #' @export
@@ -122,11 +122,13 @@ fuseRange <- function(r1, r2, extend = TRUE) {
 #' used as a filter. "regression" means that the signal is regressed form the most
 #' intense band as an Exponential modified gaussian.
 #' @param pvalthresh The threshold used in p-value to discard signal, only used if
-#' a noise model is furnished.
+#' a noise model is provided.
 #' @param scanmin The first scan to consider.
 #' @param scanmax The last scan to consider.
 #' @param fracPoint A filter on the number of point found in a band. 0.3 by default to allow matrix
 #' effect.
+#' @param sizeMin The minimum number of point considered for a band to be considred for solvent filtration.
+#' @param bandlist An optional bandlist to be passed.
 #' @param ... more arguments to be passed to the \link{determiningInjectionZone} function.
 #' @return A numeric matrix with the following column
 #' \itemize{
@@ -141,7 +143,8 @@ fuseRange <- function(r1, r2, extend = TRUE) {
 #'     \item corPeak An idicator of matrix effect, if it's close to 1, the compound
 #'     does not suffer from heavy matrix effect, if it is inferior to 0.5, the compound
 #'     suffer from heavy matrix effect.
-#'     \item Sig_Sol The ratio of the signal max intensity on the oslvent max intensity.
+#'     \item timeShifted An indicator of the shifting of th epeak in the time direction.
+#'     \item signalOverSolventRatio The ratio of the signal max intensity on the solvent max intensity.
 #'     }
 #' @aliases findFIASignal findPeaks
 #' @examples
@@ -182,7 +185,14 @@ findFIASignal <-
 			 scanmin = 1,
 			 scanmax = length(xraw@scantime),
 			 fracPoint = 0.3,
+			 sizeMin = NULL,
+			 bandlist = NULL,
 			 ...) {
+		if(class(xraw)=="character"){
+			xraw <- xcmsRaw(xraw)
+		}else if(class(xraw)!="xcmsRaw"){
+			stop("Character giving path to a file or xcmsRaw object required for xraw argument.")
+		}
 		solint <- match.arg(solint)
 		solvar <- match.arg(solvar)
 		f <- match.arg(f)
@@ -207,39 +217,45 @@ findFIASignal <-
 				"areaIntensity",
 				"maxIntensity",
 				"solventIntensity",
-				"corPeak",
-				"shifted",
-				"Sig_Sol"
+				"corSampPeak",
+				"timeShifted",
+				"signalOverSolventRatio"
 			)
 		
 		###Which kind of quality control will be used.
 		QC <- "Reduced"
 		if (is.null(es) & is.null(SNT)) {
-			stop("No noise model and no SNT furnished.")
+			stop("No noise model and no SNT provided.")
 		} else if (is.null(es) & is.numeric(SNT)) {
-			message("No noise model furnished, a signal/solvant threshold will be used.")
+			QC <- "Snt"
+			message("No noise model provided, a signal/solvant threshold will be used.")
 		} else if (!is.null(es@estimation)) {
 			if (is.null(pvalthresh)) {
 				message(
-					"A noise model is furnished but no threshold was specified, the threshold is therefore set to 0.01 by default"
+					"A noise model is provided but no threshold was specified, the threshold is therefore set to 0.01 by default"
 				)
 				pvalthresh <- 0.01
 			} else{
-				message("A noise model and a pvalue threshold are furnished, SNT will be ignored.")
+				message("A noise model and a pvalue threshold are provided, SNT will be ignored.")
 			}
 			QC <- "Nes"
 		} else{
 			stop("Wrong type of noise or SNT, check the parameters.")
 		}
 		if (QC == "Nes") {
-			headPeaks <- c(headPeaks, "pvalue")
+			headPeaks <- c(headPeaks, "signalOverSolventPvalue")
 		}
 		modelPeak <- NULL
+		if(is.null(sizeMin)){
+			sizeMin <- floor((sizepeak[3] -sizepeak[1]) * 0.5)
+		}
 		
-		AllBand <- findBandsFIA(
+		###Bands are calculated.
+		if(is.null(bandlist)){
+		bandlist <- findBandsFIA(
 			xraw,
 			ppm = ppm,
-			sizeMin = floor((sizepeak[3] -sizepeak[1]) * 0.5),
+			sizeMin = sizeMin,
 			dmz =
 				dmz,
 			beginning = sizepeak[1],
@@ -248,6 +264,7 @@ findFIASignal <-
 			lastScan = scanmax,
 			fracMin = fracPoint
 		)
+		}
 		pmmin = sizepeak[1]
 		pmmax = sizepeak[2]
 		if (f == "TIC") {
@@ -261,7 +278,7 @@ findFIASignal <-
 		} else if (f == "regression") {
 			modelPeak <- getInjectionPeak(
 				xraw,
-				AllBand,
+				bandlist,
 				sec = 2,
 				iquant = 0.95,
 				gpeak = sizepeak,
@@ -314,27 +331,34 @@ findFIASignal <-
 		
 		###list which will stock the result.
 		ResList <- list()
+		if(graphical){
+			plot.new()
+			title(main=paste("Peak and filters vizualisation : ",getRawName(xraw@filepath)))
+			legend("center",legend = c("Raw EIC","Smoothed Eic","Integration limit","Injection peak filter coef","Triangular filter Coef (when used)"),
+				   col=c("black","darkgreen","red","orange","purple"),lwd=2,lty=c(1,1,2,1,1))
+		}
+		
 		message("Band filtering: ", appendLF = FALSE)
 		memmess <- 1
-		for (i in 1:nrow(AllBand)) {
+		for (i in 1:nrow(bandlist)) {
 			bshifted <- 0
-			vact <- floor(i / nrow(AllBand) * 100) %/% 10
+			vact <- floor(i / nrow(bandlist) * 100) %/% 10
 			if (vact != memmess) {
 				memmess <- vact
 				message(memmess * 10, " ", appendLF = FALSE)
 			}
 			vEic <-
-				rawEIC(xraw, mzrange = c(AllBand[i, "mzmin"], AllBand[i, "mzmax"]))
+				rawEIC(xraw, mzrange = c(bandlist[i, "mzmin"], bandlist[i, "mzmax"]))
 			#Extending the sequence to at least two times the size of the
 			#injection filter
-			if (length(vEic$intensity) / length(modelPeak) < 2) {
-				nlength <- nextn(2 * length(modelPeak), 2)
-				valrep <-
-					mean(vEic$intensity[(length(vEic$intensity) - 3):length(vEic$intensity)])
-				vEic$intensity <- c(vEic$intensity,
-									rep(valrep,
-										times = nlength - length(vEic$intensity)))
-			}
+			# if (length(vEic$intensity) / length(modelPeak) < 2) {
+			# 	nlength <- nextn(2 * length(modelPeak), 2)
+			# 	valrep <-
+			# 		mean(vEic$intensity[(length(vEic$intensity) - 3):length(vEic$intensity)])
+			# 	vEic$intensity <- c(vEic$intensity,
+			# 						rep(valrep,
+			# 							times = nlength - length(vEic$intensity)))
+			# }
 			
 			
 			
@@ -397,6 +421,7 @@ findFIASignal <-
 			SecondMax <- NULL
 			FirstMax <- FALSE
 			PeakFound <- FALSE
+			extendedFilter <- FALSE
 			###If the maximum detected is in the injection peak.
 			if (posMax < sizepeak[2] && posMax > sizepeak[1]) {
 				###First estimation of the peak limit. peaklim will store the peak limit all along the process.
@@ -418,7 +443,7 @@ findFIASignal <-
 				#We find the limit on the convolved sequence.
 				flim <-
 					findPeaksLimits(convolvedSeqF, pMf - 1, pMf + 1)
-				
+				second_filter <- FALSE
 				###Case where the max is the right of the injection peak.
 				if (posMax < sizepeak[2] &
 					posMax > sizepeak[3]) {
@@ -449,6 +474,7 @@ findFIASignal <-
 												  SecondMax - 1,
 												  SecondMax + 1)
 							peaklim[1] <- pl[1]
+							extendedFilter <- TRUE
 						} else {
 							### Checking hte injection filter in the good direction.
 							SecondInter <-
@@ -464,6 +490,7 @@ findFIASignal <-
 									SecondInter[1] - 1 + pmaxInjPeak
 								Secondpmf <-
 									SecondMax + pmaxInjPeak
+								second_filter <- TRUE
 								if (Secondpmf > sizepeak[1] &
 									Secondpmf < pl[1]) {
 									rawSecondPmf <-
@@ -473,6 +500,7 @@ findFIASignal <-
 										findPeaksLimits(smoothedSeq,
 														rawSecondPmf - 2,
 														rawSecondPmf + 2)
+									extendedFilter <- TRUE
 									peaklim[1] <- pl[1]
 								}
 							}
@@ -504,7 +532,8 @@ findFIASignal <-
 											  rawSecondPmf - 1,
 											  rawSecondPmf + 1)
 						if(pl[2]>peaklim[2]){
-						peaklim[2] <- pl[2]
+							extendedFilter <- TRUE
+							peaklim[2] <- pl[2]
 						}
 					}
 				}
@@ -515,7 +544,7 @@ findFIASignal <-
 				##modelPeak.
 				#peaklim = floor(nf / 2)+c(pMf - (floor(nf / 2)), pMf + (floor(nf / 2)))
 				###Locating the limit of the peak found
-				bshifted = 1
+				bshifted <- 1
 				pl <-
 					findPeaksLimits(convolvedSeqF, pMf - 3, pMf + 3)
 				peaklim <- pl + floor(nf / 2)
@@ -590,7 +619,7 @@ findFIASignal <-
 				# if (peaklim[2] > sizepeak[2] &
 				# 	abs(posMax - sizepeak[2]) < abs(posMax - sizepeak[3]) &
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
-				if (mean(peaklim)>sizepeak[2]) {
+				if ((mean(peaklim[1:2])>mean(sizepeak[1:2]))&(!extendedFilter)) {
 					bshifted <- 1
 				}
 			} else if (QC == "Nes") {
@@ -612,11 +641,14 @@ findFIASignal <-
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
 				# 	bshifted <- 1
 				# }
-				if (mean(peaklim)>sizepeak[2]) {
+				if ((mean(peaklim)>mean(sizepeak[1:2]))&(!extendedFilter)) {
 					bshifted <- 1
 				}
 				
 				
+			}else if(QC=="Snt"){
+				if (SNTval < SNT)
+					next
 			}
 			if (bshifted) {
 				valCor <- NA_real_
@@ -631,9 +663,9 @@ findFIASignal <-
 			} else{
 				if(NoPeak){
 					tempRes <- c(
-						AllBand[i, "mzmin"],
-						AllBand[i, "mzmax"],
-						AllBand[i, "mz"],
+						bandlist[i, "mzmin"],
+						bandlist[i, "mzmax"],
+						bandlist[i, "mz"],
 						NA_real_,
 						NA_real_,
 						0,
@@ -668,9 +700,9 @@ findFIASignal <-
 					iArea <- iArea - solArea
 				}
 				tempRes <- c(
-					AllBand[i, "mzmin"],
-					AllBand[i, "mzmax"],
-					AllBand[i, "mz"],
+					bandlist[i, "mzmin"],
+					bandlist[i, "mzmax"],
+					bandlist[i, "mz"],
 					peaklim[1],
 					peaklim[2],
 					iArea,
@@ -691,14 +723,15 @@ findFIASignal <-
 			ResList[[psip]] <- tempRes
 			psip <- psip + 1
 			
-			###Eventually affine the peak limit.
+			
+			###Graphical output if needed.
 			if (graphical) {
 				if (is.null(peaklim))
 					next
 				ntitle <- paste("mz :",
-								sprintf("%0.4f", AllBand[i, "mzmin"]),
+								sprintf("%0.4f", bandlist[i, "mzmin"]),
 								"-",
-								sprintf("%0.4f", AllBand[i, "mzmax"]))
+								sprintf("%0.4f", bandlist[i, "mzmax"]))
 				plot(
 					xraw@scantime,
 					vEic$intensity / mEic,
@@ -709,16 +742,19 @@ findFIASignal <-
 					xlab = "Time",
 					ylab = "Intensity"
 				)
-				yseq <- areaEIC[peaklim[1]:peaklim[2]] / mEic
-				yseq <- c(yseq, rep(0, peaklim[2] -
-										peaklim[1] + 1))
-				# lines(
-				#     xraw@scantime[sizepeak[1]:(sizepeak[2])],
-				#     modelPeak / max(modelPeak),
-				#     col =
-				#         "darkgrey",
-				#     lwd = 2
-				# )
+				
+				###Smoothed sequence
+				lines(
+					xraw@scantime,
+					smoothedSeq/mEic,
+					col = "darkgreen",
+					lwd = 2
+				)
+				
+				##Peak Area is delimited by verticla bands.
+				segments(xraw@scantime[c(peaklim[1],peaklim[2])],c(1,1),y1 = c(0,0),
+						 col="red",lty=2,lwd=2)
+				
 				lines(xraw@scantime, vEic$intensity / mEic, lwd = 2)
 				lines(
 					xraw@scantime[(floor((nf + 1) / 2)):(length(xraw@scantime) - floor(nf /
@@ -727,14 +763,15 @@ findFIASignal <-
 					col = "orange",
 					lwd = 2
 				)
+				if(second_filter){
 				lines(
-					xraw@scantime[(floor((ninj + 1) / 2)):(length(xraw@scantime) - floor(ninj /
+				xraw@scantime[(floor((ninj + 1) / 2)):(length(xraw@scantime) - floor(ninj /
 																						 	2))],
 					convolvedSeqInj / max(convolvedSeqInj),
 					col = "purple",
 					lwd = 2
 				)
-				abline(v = xraw@scantime[peaklim], col = "darkgreen")
+				}
 				
 			}
 		}
@@ -866,8 +903,10 @@ determiningInjectionZone <-
 		
 		####Removing the one with an angl to the bottom.
 		candidates_limits <-
-			candidates_limits[which(vy[candidates_limits - 1] > vy[candidates_limits] &
-										vy[candidates_limits + 1] < vy[candidates_limits])]
+			candidates_limits[which(seqTIC$intensity[candidates_limits - 1] > 
+										seqTIC$intensity[candidates_limits] &
+										seqTIC$intensity[candidates_limits + 1]<
+										seqTIC$intensity[candidates_limits])]
 		
 		
 		##We test with the angle between the summit and the end of the signal.
@@ -890,16 +929,32 @@ determiningInjectionZone <-
 					 	2,
 					 length(candidates_limits)))
 		
+		##lines value <-
+		lvalues <- ((rep(vx[length(vx)], length(
+			candidates_limits
+		)) - vx[candidates_limits])/(vx[length(vx)] - vx[pmax]))*
+			(vy[pmax] - vy[length(vx)])+vy[length(vx)]
 		
-		val_cos_1 <- (a ^ 2 + b ^ 2 - c ^ 2) / (2 * a * b)
+		pright <- which(lvalues>=vy[candidates_limits])
+		if(length(pright)==0){
+			warning("No right limit may be detected, this can be caused
+					by wrongly formed unjection peak.")
+			p3 <- scanmax
+		}else{
+			
+			val_cos_1 <- (a[pright] ^ 2 + b[pright] ^
+						  	2 - c[pright] ^ 2) / (2 * a[pright] *
+						  						  	b[pright])
+			
+			valcos <- acos(val_cos_1)
+			
+			
+			#We get the peak with the highest angle.
+			p3 <- candidates_limits[pright[which.min(valcos - a[pright] * b[pright])]]
+			
+		}
 		
-		valcos <- acos(val_cos_1)
-		
-		#We get the peak with the highest angle.
-		p3 <- which.min(valcos - a * b * 2) + (pmax + (pmax - pbegin)) - 1
-		
-		res <- c(pbegin, p3, pmax)
-		
+		res <- c(pbegin,p3,pmax)
 		if (graphical) {
 			title <-
 				paste("Initial guess of injection  zone",
@@ -913,11 +968,10 @@ determiningInjectionZone <-
 				main = title
 			)
 			abline(v = xraw@scantime[res], col = "red")
-			
 		}
 		
 		####CHecking the percentage of area taken by the peak of proFIA.
-		solventVal <- mean(seqTIC$intensity)
+		solventVal <- mean(seqTIC$intensity[1:res[1]])
 		
 		iout <-
 			c(unique(1:res[1]), unique(res[2]:length(seqTIC$intensity)))
@@ -925,7 +979,7 @@ determiningInjectionZone <-
 		
 		areaIn <- trapezArea(xraw@scantime[iin], seqTIC$intensity[iin])
 		areaOut <- trapezArea(xraw@scantime[iout],
-							  seqTIC$intensity[iout])
+									   seqTIC$intensity[iout])
 		#Substracting the solvent.
 		areaIn <-
 			areaIn - trapezArea(xraw@scantime[iin], rep(solventVal, length(iin)))
@@ -944,8 +998,8 @@ determiningInjectionZone <-
 				)
 			)
 			
-			return(res)
 		}
+		return(res+scanmin-1)
 	}
 
 
@@ -955,7 +1009,7 @@ determiningInjectionZone <-
 #'
 #' Determine a first approximation of the injection peak using the
 #' Douglas-Peuker Algorithm provided in the \code{rgeos} package.
-#' The object furnished must be an xcmsRaw object.
+#' The object provided must be an xcmsRaw object.
 #'
 #' @export
 #' @param xraw An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.
@@ -1171,7 +1225,7 @@ getInjectionPeak <-
 			}, xraw = xraw)
 			
 			
-			###A number of 0 equal to the size of the injection peak is furnished to avoid
+			###A number of 0 equal to the size of the injection peak is provided to avoid
 			###Problem fitting the beginning of the peaks
 			###Making a verfication that the retianed profiles does not have solvent in it
 			vok <-
@@ -1499,7 +1553,7 @@ matResiduals <-
 # 			gpeak <- determiningInjectionZone(xraw)
 # 		}
 # 		if(is.null(bandlist)){
-# 			message("No bandList furnished")
+# 			message("No bandList provided")
 # 			bandlist=findBandsFIA(xraw,ppm=)
 # 		}
 #
@@ -1521,7 +1575,7 @@ matResiduals <-
 # 		}, xraw = xraw)
 #
 #
-# 		###A number of 0 equal to the size of the injection peak is furnished to avoid
+# 		###A number of 0 equal to the size of the injection peak is provided to avoid
 # 		###Problem fitting the beginning of the peaks
 # 		###Making a verfication that the retianed profiles does not have oslvent in it
 # 		vok <- which(as.logical(apply(matInt, 2, checkIso, niso = 3)))

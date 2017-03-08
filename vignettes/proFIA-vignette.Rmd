@@ -39,7 +39,7 @@ and the classes (when subdirectories for the raw data are present), as well as
 all results froom the processing (e.g., detected peaks, grouping, etc.).  At
 each step, the data quality can be checked by graphics such as `plotEICs`, or
 `plotRaw`. For convenience, the 3 processing functions and methods from the
-workflow (`proFIAset`, `group.FIA`, and `fillPeaks.FIA`) have been wrapped into
+workflow (`proFIAset`, `group.FIA`, and `imputeMissingValues.WKNN_T`) have been wrapped into
 a single `analyzeAcquisitionFIA` function. The final *dataMatrix* can be
 exported, as well as the 2 supplementary tables containing the *sampleMetadata*
 and the *variableMetadata*.
@@ -81,7 +81,7 @@ in mind are:
 * `noiseEstimation` (logical): shall noise model be constructed to filter
   signal? (recommended).
   
-* `ppm` (numeric): maximum deviation between scans during strips detection.
+* `ppm` and `dmz` (numeric): maximum deviation between scans during strips detection in ppm. If the deviation in absolute in mz is lower than dmz, *dmz* is taken over *ppm* to account for low masses bias.
 
 * `parallel` (logical): shall parallel computation be used.
 
@@ -94,7 +94,7 @@ equal to 5 ppm.
 
 ```{r profiaset,fig.show="hide",message=FALSE}
 # defining the ppm parameter adapted to the Orbitrap Fusion
-ppm <- 3
+ppm <- 2
 
 # performing the first step of the workflow
 plasSet <- proFIAset(path, ppm=ppm, parallel=FALSE)
@@ -190,20 +190,40 @@ which is considered to be more robust, or as the maximum intensities
 plasSet <- makeDataMatrix(plasSet, maxo=FALSE)
 ```
 
-## Imputation with `fillPeaks.WKNN`
+## Imputation with `imputeMissingValues.WKNN_T`
 
 Imputation of the data matrix is performed by using a weighted k-nearest
 neighbours approach. A good number for k is half the size of the smaller class.
 * *k* (numeric): number of neighbours
 
 ```{r fillpeaks, warning=FALSE, eval=FALSE}
-# since there is only 1 replicate, k is set to 1, which should not be the case in a standard experiment.
-k <- 1
+# k is supposed to be 3 at minimum, however here we have only 2 sample by class, the results of the imputation are irrelevant.
+k <- 3
 
-# imputation
-plasSet <- fillPeaks.WKNN(plasSet, k=k)
+#Missing values  imputation
+plasSet <- imputeMissingValues.WKNN_TN(plasSet, k=k)
+
+#Because of the too high k, we reinitialize the data matrix.
+plasSet <- makeDataMatrix(plasSet)
 ```
-Here you see a warning because doing 1-Nearest-Neighbour is a bad partice, but for purpose of demonstration and to avoid long computations, we only furnished two sample by classes, which means that 1-Nearest-Neighbour is the best option in this case.
+It is good to note that *k* should be greater than 2 because the K-Nearest Neighbour algorithm for truncated distribution is based on correlation for measuring the similarity. As there is 2 replicates in each sample in this case k should have been set to 1, we fix *k* to 3 for demonstration purpose.
+
+## Quality evaluation with `plot`
+
+Plot allows you yo obtain a quick overview of the data, by plotting a summary of the acquisition :
+```{r plot,message=FALSE}
+plot(plasSet)
+```
+Note that all the graph are not all present at each step of the workflow. A small discussion of the content of each graph is given there :
+
+* *Number of peaks* The upper graph show the number of relevant signal found in each sample, and labels the peaks in three cathegories. Peaks shifted in time correspond to peak which are outside the detected sample peak, and are probably results of rentention in the windows. Peak sufferient from shape distrosion are often affected by an heavy matrix effect, these 2 cathegories may indicate an issue in the acquisition. Well-behaved peak correspond to peak which follow the sample injection peak. For proFIA to perform optimally, the majority of these peak shloud be in this cathegory.
+
+* *Injection Peaks* This give an overview of all the smaples injections peaks regressed by proFIA, if the Flow Injection condition are the same, they should have close shapes.
+
+* *Density of m/z of found features* This plot is present after the goruping phase. The density of the found features. This plot may allows the spotting of a missed band detection, resulting in no group at the end of the range of m/z, which can be caused by a wrong *dmz* or *ppm* parmeter.
+
+* *PCA* This graph is present after the data matrix construvtion. A simple ACP of the log intensity, allows you to quickly spot abherrant value in one acquisition.
+
 
 ## Running the whole workflow with `analyzeAcquisitionFIA`
 
@@ -215,10 +235,11 @@ The whole workflow described previously can be run by a single call to the
 ppm <- 2
 ppmgroup <- 1
 fracGroup <- 0.2
-k <- 1
+k <- 3
 
 # running the whole workflow in a single step
 plasSet <- analyzeAcquisitionFIA(path, ppm=ppm, ppmgroup=ppmgroup, k=k,fracGroup = fracGroup,parallel=FALSE)
+
 ```
 
 ## Export
@@ -270,19 +291,17 @@ peakTable <- exportPeakTable(plasSet,mval="zero")
 
 ###Cutting the useless column
 dataMatrix <- peakTable[,1:nrow(phenoClasses(plasSet))]
-
-
 ```
 
 ```{r plot_summary_opls, echo=FALSE}
 plasSet.opls <- opls(t(dataMatrix),log10(vconcentration),predI = 1,log10L = TRUE, orthoI = NA, devNewL = FALSE,crossvalI=5)
 ```
 ```{r plot_summary_opls_h, eval=FALSE}
-plasSet.opls <- opls(t(peakTable),scale(log10(vconcentration)),predI = 1,log10L = TRUE, orthoI = NA)
+plasSet.opls <- opls(t(peakTable),scale(log10(vconcentration)),predI = NA,log10L = TRUE, orthoI = NA)
 ```
 As the variance explained Q2 is close to 0.8, so the fitted model explains the majority of the variance. The score plot and the observation diagnostic show that there as no aberrant deviation between samples. As the compounds are spiked with an increasing concentration of chemicals, this should be visible of the first components. The second effect affecting the experiment is the matrix effect. We expect the second compoennts of the model to represent suppressed peaks. We can easely see this by checking the VIP on the main components versus vip on the orthogonal component :
 ```{r matrix_effect_plot}
-matEfInd <- peakTable$corMean
+matEfInd <- peakTable$corSampPeakMean
 nnaVl <- !is.na(matEfInd)
 matEfInd <- matEfInd[nnaVl]
 ordVi <- order(matEfInd)

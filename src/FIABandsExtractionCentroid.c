@@ -740,31 +740,19 @@ void cleanUpBandList(struct bandList * bL,int size_min, int injsc, int injend,do
             }
         }
         //Checking the faction of point present.
-        if(numInj<limitInj)
+        if((maxSize<=size_min)&(numInj<limitInj))
         {
+            //Rprintf(" %d ",counterBand);
             to_remove=posBand;
             posBand=posBand->nextBand;
             removeBand(bL,to_remove);
         }
         else
         {
-            if(maxSize<=size_min)
-            {
-                //Rprintf(" %d ",counterBand);
-                to_remove=posBand;
-                posBand=posBand->nextBand;
-                removeBand(bL,to_remove);
-            }
-            else
-            {
-                //posBand->intensity=trapzApprox(posBand,scantime);
-                posBand=posBand->nextBand;
-            }
+            posBand=posBand->nextBand;
         }
-        //Rprintf(" done\n");
         counterBand++;
     }
-    //Rprintf("outwhile\n");
 }
 
 //void checkSolvent(struct bandList * bL, int smin)

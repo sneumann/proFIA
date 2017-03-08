@@ -9,7 +9,7 @@ findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
   solint = c("poly", "substract", "add"), fullInteg = FALSE, dmz = 5e-04,
   graphical = FALSE, SNT = NULL, f = c("regression", "TIC"),
   pvalthresh = NULL, scanmin = 1, scanmax = length(xraw@scantime),
-  fracPoint = 0.3, ...)
+  fracPoint = 0.3, sizeMin = NULL, bandlist = NULL, ...)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -48,7 +48,7 @@ used as a filter. "regression" means that the signal is regressed form the most
 intense band as an Exponential modified gaussian.}
 
 \item{pvalthresh}{The threshold used in p-value to discard signal, only used if
-a noise model is furnished.}
+a noise model is provided.}
 
 \item{scanmin}{The first scan to consider.}
 
@@ -56,6 +56,10 @@ a noise model is furnished.}
 
 \item{fracPoint}{A filter on the number of point found in a band. 0.3 by default to allow matrix
 effect.}
+
+\item{sizeMin}{The minimum number of point considered for a band to be considred for solvent filtration.}
+
+\item{bandlist}{An optional bandlist to be passed.}
 
 \item{...}{more arguments to be passed to the \link{determiningInjectionZone} function.}
 }
@@ -73,12 +77,13 @@ A numeric matrix with the following column
     \item corPeak An idicator of matrix effect, if it's close to 1, the compound
     does not suffer from heavy matrix effect, if it is inferior to 0.5, the compound
     suffer from heavy matrix effect.
-    \item Sig_Sol The ratio of the signal max intensity on the oslvent max intensity.
+    \item timeShifted An indicator of the shifting of th epeak in the time direction.
+    \item signalOverSolventRatio The ratio of the signal max intensity on the solvent max intensity.
     }
 }
 \description{
 Detect the peak corresponding to compounds present in the sample
-in a Flow Injection Analysis (FIA) acquisition. The item furnished
+in a Flow Injection Analysis (FIA) acquisition. The item provided
 must be an xcmsRaw object.
 }
 \examples{

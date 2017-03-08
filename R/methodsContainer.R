@@ -295,6 +295,8 @@ proFIAset <-
             plotNoise(nes)
         }
         pFIA@noiseEstimation <- nes
+        ###We keep all the bands if possible.
+        
         
         lRes <- list()
         if (parallel & requireNamespace("BiocParallel")) {
@@ -358,7 +360,7 @@ proFIAset <-
     }
 
 
-
+#' @include KNN_T.R
 setMethod("show", "proFIAset", function(object) {
     if(nrow(object@classes)==0){
         cat("An empty proFIAset object.\n")
@@ -387,6 +389,147 @@ setMethod("show", "proFIAset", function(object) {
     cat("Memory usage:", signif(memsize / 2 ^ 20, 3), "MB\n")
 })
 
+switchSummaryPeak<-function(x){
+	if(is.na(x)){
+		return("Shifted in time")
+	}
+	if(x==0){
+		return("Well-behaved peak")
+	}
+	if(x==1){
+		return("Heavy shape distorsion (corSampPeak<0.2)")
+	}
+	
+	###Thess case are never uspposed to happens.
+	if(x==2){
+		return("Shifted in time")
+	}
+	if(x==3){
+		return("Shifted in time and matrix effect")
+	}
+}
+
+
+#' Plot a summary of an FIA experiment.
+#'
+#' Plot a summary of an FIA acquisition. This summary aims to provides an overview of the
+#' FIA acquisition and the processinf of FIA acquisition. It includes the following graphs :
+#' \itemize{
+#'     \item Barplot A barplot giving the number of peak detected in each sample. The number 
+#'     of shifted peak is indicated, which can indicate wrong FIA-acquisition, as well as the
+#'     number of peak badly with a low correlation with the injection peak, which can indicate
+#'     a strong matrix effect.
+#'     \item Injection_Peaks A representation of all the injection peaks of the acquisition, a
+#'     greatly different peak in th einjection may indicate an issue with the injection, or a problem
+#'     of regression. If the peaks seems all different, try to use \link{proFIAset} with the f
+#'     paramter on TIC, to avoid regression.
+#'     \item Density A density plot of the m/z of all the features found. A missing interval at the end
+#'     of the mz range may indicate a too low ppm parameter, while a missing interval at the beginning
+#'     of the mz range may indicate a too low dmz parameter.
+#'     \item PCA A PCA plot to obtain a quick diagnostic of the data. The PCA plot is supposed to be different
+#'     before and after imputation.
+#' }
+#' 
+#' @export
+#' @param x A proFIAset object.
+#' @param y Unused at the moment.
+#' @param type Shall the plotting be done by sample or by class for the barplot ?
+#' 
+#' @aliases plot.FIA
+#' @return Nothing
+#' @examples
+#' if(require("plasFIA")){
+#'    data(plasSet)
+#'    
+#'    
+#'    ####Diagnostic plot after imputation
+#'    plot(plasSet)
+#'    
+#'    ####The same plot by classes.
+#'    plot(plasSet,type="class")
+#'    
+#'    ####Diagnostic plot before imputation
+#'    plasSet <- makeDataMatrix(plasSet)
+#'	  plot(plasSet)
+#' 
+#' }
+#' @rdname plot
+setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","class")){
+	vstep <- 0
+	title_pca <- NULL
+	vomar <- par("mar")
+	par(mar=c(3.1,2.1,2.1,1.6))
+	if(x@step=="Peak_extracted"){
+		layout(matrix(1:2,ncol=2))
+		vstep <- 1
+	}
+	if(x@step=="Samples_grouped"){
+		layout(matrix(c(1,1,2,3),ncol=2,byrow=TRUE))
+		vstep <- 2
+	}
+	if(x@step %in% ("Matrix_created")){
+		layout(matrix(c(1,1,1,1,2,4,3,4),ncol=2,byrow=TRUE))
+		vstep <- 4
+		title_pca <- "PCA without imputation"
+	}
+	if(x@step=="Fillpeaks"){
+		layout(matrix(c(1,1,1,1,2,4,3,4),ncol=2,byrow=TRUE))
+		vstep <- 4
+		title_pca <- "PCA after imputation"
+	}
+	
+	### Barplot of the number of peaks found.
+	type <- match.arg(type)
+	###First plotting the number of peak detected by sample.
+	#tsample <- table(object@peaks[,"sample"])
+	swShiftCor <- 2*x@peaks[,"timeShifted"]+1*(x@peaks[,"corSampPeak"]<0.2)
+	vclasses <- sapply(swShiftCor,switchSummaryPeak)
+	if(type=="sample"){
+		vaggreg <- x@peaks[,"sample"]
+	}else{
+		vaggreg <- x@classes[x@peaks[,"sample"],2]
+	}
+	valHeight <- aggregate(vclasses,by=list(vaggreg),FUN=function(x){
+		tx <- table(x)
+		vres <- as.numeric(tx)
+		names(vres) <- names(tx)
+		vres
+		})
+	valHeight <- as.matrix(valHeight[,-1])
+	maxy <- apply(valHeight,1,sum)
+	if(type=="sample"){
+		rownames(valHeight) <- proFIA:::getRawName(x@classes[,1])
+	}else{
+		rownames(valHeight) <- unique(as.character(x@classes[,2]))
+	}
+	omar <- par("mar")
+	par(mar=c(6.1,4.1,4.1,2.1))
+	barplot(t(valHeight),legend=colnames(valHeight),col=c("darkblue","red","yellow"),
+			ylab="Number of peaks",main="Number of peaks",
+			ylim=c(0,max(maxy)*1.25),las=2)
+	par(mar=omar)
+	
+	###the injection peaks are plotted.
+	plotInjectionPeaks(x)
+	
+	if(vstep<2) return(invisible(NA))
+	
+	plot(density(x@group[,"mzMed"],bw=5),col="red",xlab="m/z",
+		 ylab="Density of features",main="Density of the m/z of found features",lwd=2)
+	
+	if(vstep<3) return(invisible(NA))
+	tempMatrix <- t(x@dataMatrix)
+	tempMatrix[which(is.na(tempMatrix))] <- 0
+	res_pca <- suppressMessages(opls(tempMatrix,plotL=FALSE,predI=2,log10L=TRUE,crossvalI=min(7,nrow(tempMatrix)-1)))
+	plot(res_pca,type="x-score",parAsColFcVn=x@classes[,2],parTitleL=FALSE,parDevNewL=FALSE)
+	title(title_pca)
+	par(mar=vomar)
+	return(invisible(NA))
+})
+
+
+
+
 
 setGeneric("group.FIA", function(object, ...)
     standardGeneric("group.FIA"))
@@ -404,6 +547,7 @@ setGeneric("group.FIA", function(object, ...)
 #' @param nPoints the number of points used on the density, this parameter
 #' only needs to be changed if the number of group found seems small.
 #' @param sleep If not 0 densities are plotted every \code{sleep} ms.
+#' @param dmz A minimum mz value for the mz density of grouping.
 #' @param fracGroup The minimum fraction of samples of a class required to make
 #' a group.
 #' @param solvar Shall the group corresponding to solvent signal be kept.
@@ -427,6 +571,7 @@ setMethod("group.FIA", "proFIAset", function(object,
                                              solvar = FALSE,
                                              nPoints = 1024,
                                              sleep = 0,
+											 dmz=0.0005,
                                              fracGroup = 0.5) {
     ###CHecking that files have been peaks picked
     if (nrow(object@peaks) == 0) {
@@ -470,23 +615,22 @@ setMethod("group.FIA", "proFIAset", function(object,
         "scanMax",
         "nPeaks",
         "meanSolvent",
-        "shifted"
+        "timeShifted"
     )
     boolpval <- FALSE
     NamesPeakList <- colnames(tabP)
-    boolpval <- ("pvalue" %in% NamesPeakList)
+    boolpval <- ("signalOverSolventPvalue" %in% NamesPeakList)
     if (boolpval) {
-        legList <- c(legList, "pvalueMean")
+        legList <- c(legList, "signalOverSolventPvalueMean")
     }
-    boolcor = ("corPeak" %in% NamesPeakList)
+    boolcor = ("corSampPeak" %in% NamesPeakList)
     if (boolcor) {
-        legList <- c(legList, "corMean", "corSd")
+        legList <- c(legList, "corSampPeakMean", "corSampPeakSd")
     }
-    boolss = ("Sig_Sol" %in% NamesPeakList)
+    boolss = ("signalOverSolventRatio" %in% NamesPeakList)
     if (boolss) {
-        legList <- c(legList, "SigSolMean")
+        legList <- c(legList, "signalOverSolventRatioMean")
     }
-    
     groupmat <- matrix(nrow = 512, ncol = length(legList))
     colnames(groupmat) <- legList
     listgroup <- vector(mode = "list", 512)
@@ -506,7 +650,7 @@ setMethod("group.FIA", "proFIAset", function(object,
         pos <- pos + 1
         
         ###Determining hte base of the signal to skip for a resolution.
-        bw <- 5 * massInter[i] * ppmgroup / (10 ^ 6)
+        bw <- max(5 * massInter[i] * ppmgroup / (10 ^ 6),dmz)
         if (bw > inter / 4) {
             warning(
                 "Interval for grouping seems to short. Increase the inter parameter or modify the resolution parameter"
@@ -611,22 +755,20 @@ setMethod("group.FIA", "proFIAset", function(object,
                 range(c(subpeakl[selectedPGroup, "mzmin"], subpeakl[selectedPGroup, "mzmax"]))
             
             groupmat[num_group, "nPeaks"] <- length(posSample)
-            groupmat[num_group, "shifted"] <- ifelse(sum(subpeakl[selectedPGroup, "shifted"])==0,0,1)
+            groupmat[num_group, "timeShifted"] <- ifelse(sum(subpeakl[selectedPGroup, "timeShifted"])==0,0,1)
             
             groupmat[num_group, "meanSolvent"] <-
                 mean(subpeakl[posSample, "solventIntensity"])
             if (boolpval) {
-                groupmat[num_group, "pvalueMean"] = mean(subpeakl[posSample, "pvalue"])
+                groupmat[num_group, "signalOverSolventPvalueMean"] = median(subpeakl[posSample, "signalOverSolventPvalue"])
             }
             if (boolcor) {
-                groupmat[num_group, "corMean"] = mean(subpeakl[posSample, "corPeak"])
-                groupmat[num_group, "corSd"] = sd(subpeakl[posSample, "corPeak"])
+                groupmat[num_group, "corSampPeakMean"] = mean(subpeakl[posSample, "corSampPeak"])
+                groupmat[num_group, "corSampPeakSd"] = sd(subpeakl[posSample, "corSampPeak"])
             }
             if (boolss) {
-                groupmat[num_group, "SigSolMean"] = mean(subpeakl[posSample, "Sig_Sol"])
+                groupmat[num_group, "signalOverSolventRatioMean"] = mean(subpeakl[posSample,"signalOverSolventRatio"])
             }
-            
-            
             listgroup[[num_group]] <-
                 sort(porder[(start:end)[posSample]])
             ###Adding the detected group to the current list.
@@ -739,7 +881,7 @@ setMethod("makeDataMatrix", "proFIAset", function(object, maxo = FALSE) {
         stop("Peaks needs to be grouped before creating the data Matrix, see ?group.FIA.")
     }
     unSample <- unique(peaks(object)[, "sample"])
-    matResult  <-  matrix(0,
+    matResult  <-  matrix(NA_real_,
                          ncol  =  max(unSample),
                          nrow  =  nrow(object@group))
     for (i in 1:nrow(object@group)) {
@@ -852,80 +994,153 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
     vecRes
 })
 
-setGeneric("fillPeaks.WKNN", function(object, ...)
-    standardGeneric("fillPeaks.WKNN"))
+
+## setGeneric("fillPeaks.WKNN", function(object, ...)
+##     standardGeneric("fillPeaks.WKNN"))
+## ## Fill missing values in the peak table.
+## ##
+## ## Impute the missing values in an FIA experiment using a Weighted
+## ## K-Nearest Neighbours.
+## ## @param object A proFIAset object.
+## ## @param k The number of neighbors considered.
+## ## @return A proFIAset object with the missing values imputated.
+## ## @aliases fillPeaks.WKNN fillPeaks.WKNN,proFIAset-method
+## ## @examples
+## ## if(require(plasFIA)){
+## ##     data(plasSet)
+## ##     
+## ##     ###Reinitializing the data matrix
+## ##     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
+## ##     plasSet<-fillPeaks.WKNN(plasSet,2)
+## ## ## }
+## setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
+##     if(object@step=="Fillpeaks"){
+##         stop("You should not perform fillPeaks on a matrix which have already been filled. Use makeDataMatrix again.")
+##     }
+## 
+##     if(object@step != "Matrix_created"){
+##         stop("Impossible to perform fillPeaks without data matrix, see ?makeDataMatrix.")
+##     }
+##     
+##     if(k==1){
+##         warning("It is strongly discouraged to do 1-nearest neighbour.")
+##     }
+## 	###WE DO THE WKNN ON THE VARIABLE.
+##     mdataMatrix <- dataMatrix(object)
+##     counterror <- 0
+##     cdat <- mdataMatrix
+##     ###We first rescale the data
+##     mdataMatrix <- t(apply(mdataMatrix,1,function(x){
+##     	x/max(max(x),1)
+##     }))
+##     
+##     knntab <- get.knn(mdataMatrix, k = min(k * 5, floor(nrow(mdataMatrix) / 2))) ###Supposition that there is less than 50% missing values.
+##     ###For each varaible getting the concerned element
+##     matcoef <- knntab$nn.dist
+##     
+##     ###Handling the case where the signal is never found.
+##     matcoef <- matcoef / apply(matcoef, 1, function(x) {
+##         if (any(x != 0)) {
+##             return(sum(x))
+##         } else{
+##             return(1)
+##         }
+##     })
+##     
+##     for (j in 1:ncol(mdataMatrix)) {
+##         pok <- which(mdataMatrix[, j] != 0)
+##         pos0 <- (1:nrow(mdataMatrix))[-pok]
+##         for (i in pos0) {
+##             toUse <- which(knntab$nn.index[i,] %in% pok)
+##             if (length(toUse) <= 1){
+##                 counterror <- counterror + 1
+##                 next
+##             }
+##             toUse <- toUse[1:min(k, length(toUse))]
+##             ncoef <- 1-matcoef[i, toUse] / max(matcoef[i, toUse])
+##             toUse <- knntab$nn.index[i,toUse]
+##             nvalue <- sum(ncoef * mdataMatrix[toUse, j])
+##             cdat[i, j] <- nvalue
+##         }
+##     }
+##     if (counterror > 1)
+##         message(paste(counterror, "variables could not be imputated."))
+##     object@dataMatrix <- cdat
+##     object@step <- "Fillpeaks"
+##     object
+## })
+
+
+setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
+	standardGeneric("imputeMissingValues.WKNN_TN"))
 #' Fill missing values in the peak table.
 #'
 #' Impute the missing values in an FIA experiment using a Weighted
-#' K-Nearest Neighbours.
+#' K-Nearest Neighbours on Truncated Distribution described by Jasmit S. Shah et al.
 #' @export
 #' @param object A proFIAset object.
-#' @param k The number of neighbors considered.
+#' @param k The number of neighbors considered, can be a fraction then in this case the
+#' k will be taken for each class as the frac of the effective of the class. 3 at minima because comparison
+#' is based on correlation.
+#' @param classes how to handle imputation for different classes, if 'split', the classes
+#' are taken separately, if 'unique', the imputation is done on the full data matrix.
 #' @return A proFIAset object with the missing values imputated.
-#' @aliases fillPeaks.WKNN fillPeaks.WKNN,proFIAset-method
+#' @aliases imputeMissingValues.WKNN_TN imputeMissingValues.WKNN_TN,proFIAset-method
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasSet)
 #'     
 #'     ###Reinitializing the data matrix
 #'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
-#'     plasSet<-fillPeaks.WKNN(plasSet,2)
+#'     plasSet<-imputeMissingValues.WKNN_TN(plasSet,2)
 #' }
-setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
-    if(object@step=="Fillpeaks"){
-        stop("You should not perform fillPeaks on a matrix which have already been filled. Use makeDataMatrix again.")
-    }
 
-    if(object@step != "Matrix_created"){
-        stop("Impossible to perform fillPeaks without data matrix, see ?makeDataMatrix.")
-    }
-    
-    if(k==1){
-        warning("It is strongly discouraged to do 1-nearest neighbour.")
-    }
-	###WE DO THE WKNN ON THE VARIABLE.
-    mdataMatrix <- dataMatrix(object)
-    counterror <- 0
-    cdat <- mdataMatrix
-    ###We first rescale the data
-    mdataMatrix <- t(apply(mdataMatrix,1,function(x){
-    	x/max(max(x),1)
-    }))
-    
-    knntab <- get.knn(mdataMatrix, k = min(k * 5, floor(nrow(mdataMatrix) / 2))) ###Supposition that there is less than 50% missing values.
-    ###For each varaible getting the concerned element
-    matcoef <- knntab$nn.dist
-    
-    ###Handling the case where the signal is never found.
-    matcoef <- matcoef / apply(matcoef, 1, function(x) {
-        if (any(x != 0)) {
-            return(sum(x))
-        } else{
-            return(1)
-        }
-    })
-    
-    for (j in 1:ncol(mdataMatrix)) {
-        pok <- which(mdataMatrix[, j] != 0)
-        pos0 <- (1:nrow(mdataMatrix))[-pok]
-        for (i in pos0) {
-            toUse <- which(knntab$nn.index[i,] %in% pok)
-            if (length(toUse) <= 1){
-                counterror <- counterror + 1
-                next
-            }
-            toUse <- toUse[1:min(k, length(toUse))]
-            ncoef <- 1-matcoef[i, toUse] / max(matcoef[i, toUse])
-            toUse <- knntab$nn.index[i,toUse]
-            nvalue <- sum(ncoef * mdataMatrix[toUse, j])
-            cdat[i, j] <- nvalue
-        }
-    }
-    if (counterror > 1)
-        message(paste(counterror, "variables could not be imputated."))
-    object@dataMatrix <- cdat
-    object@step <- "Fillpeaks"
-    object
+###We let the k being adaptative.
+setMethod("imputeMissingValues.WKNN_TN","proFIAset",function(object,k=0.6,classes=c("split","unique")){
+	####
+	classes <- match.arg(classes)
+	if(k!=round(k)&(k<=2)){
+		stop("k should be an integer superior to 2 or a real inferior to one.")
+	}
+	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then 
+									  impute missing values.")
+	dm <- dataMatrix(object)
+	dm[which(dm==0,arr.ind = TRUE)] <- NA
+	dm <- log10(dm)
+	allClasses <- unique(as.character(object@classes[,2]))
+	b_imputation <- rep(TRUE,nrow(dm))
+	resMatrix <- dm
+	if(classes=="split" & length(allClasses)>1){
+		####The matrix is splitted given the list sumbsample
+		for(i in allClasses){
+			psample <- which(as.character(object@classes[,2])==i)
+			if(length(psample)<k) warnings(paste(
+				"Using missing values imputation using",k,"while the class",i,"contains only",length(psample),"samples.\n"
+			))
+			###
+			i_k <- ifelse(k==round(k),k,ceiling(k*length(psample)))
+			temp_res <- imputeKNN(dm[,psample,drop=FALSE],k = i_k,distance="truncation")
+			resMatrix[,psample] <- temp_res$imputedData
+			
+			cat(length(b_imputation),"vs",length(temp_res$problems))
+			b_imputation <- b_imputation&temp_res$problems
+		}
+		
+	}else{
+		psample <- 1:ncol(dm)
+		i_k <- ifelse(k==round(k),k,ceil(k*length(psample)))
+		temp_res <- imputeKNN(dm[,psample,drop=FALSE],k = i_k,distance="truncation")
+		resMatrix[,psample] <- temp_res$imputedData
+		b_imputation <- b_imputation&temp_res$problems
+	}
+	
+	object@dataMatrix <- 10^resMatrix
+	
+	cnames <- colnames(object@group)
+	object@group <- cbind(object@group,as.numeric(b_imputation))
+	colnames(object@group) <- c(cnames,"imputationOk")
+	object@step <- "Fillpeaks"
+	return(object)
 })
 
 
@@ -959,7 +1174,7 @@ setMethod("peaksGroup", "proFIAset", function(object,
         index <- index[-posna]
     }
     if (length(index)==0)
-        stop("Index is of size 0, or only NA are furnished.")
+        stop("Index is of size 0, or only NA are provided.")
     matGroup <- object@peaks[unlist(object@groupidx[index]),,drop=FALSE]
     return(matGroup)
 })
@@ -1073,7 +1288,7 @@ setGeneric("exportVariableMetadata", function(object, ...)
 #'     \item scanMax the last scan on which the signal is detected.
 #'     \item nPeaks The number of peaks grouped in a group.
 #'     \item meanSolvent The mean of solvent in the acquisition.
-#'     \item pvalueMean The mean p-value of the group.
+#'     \item signalOverSolventPvalue The mean p-value of the group.
 #'     \item corMean The mean of the matrix effect indicator.
 #'     \item SigSolMean The mean of ratio of the signal max
 #'     intensity on the solvent max intensity.
@@ -1163,7 +1378,7 @@ setGeneric("plotEICs", function(object, ...)
 #' @param mz An mz value to be looked for only used if index is null.
 #' the research use the \code{\link{findMzGroup}} function.
 #' @param subsample A subset of sample to be plotted.
-#' @param ppm The tolerance for the research if mz is furnished.
+#' @param ppm The tolerance for the research if mz is provided.
 #' @param margin An area outer the EICs mz range on which the EIC may be extended.
 #' @param posleg The position of the legend on the figure. See \code{\link[graphics]{legend}}.
 #' @param title An optional vector of title for the plot. Need to be of the same
@@ -1196,7 +1411,7 @@ setMethod("plotEICs", "proFIAset", function(object,
 
     if (is.null(index)) {
         if (is.null(mz))
-            stop("Index or mz need to be furnished")
+            stop("Index or mz need to be provided")
         index <- sapply(mz, findMzGroup, object = object)
     }
     if(!is.null(title)){
@@ -1343,7 +1558,7 @@ setMethod("plotInjectionPeaks", "proFIAset", function(object, subsample =
         subsample <- which(object@classes[, 2] %in% subsample)
         if (length(subsample) == 0)
             stop(
-                "Wrong subsample furnished, subsample shall be a number
+                "Wrong subsample provided, subsample shall be a number
                 or a class of the proFIAset object."
             )
     } else if (is.numeric(subsample)) {
@@ -1356,7 +1571,7 @@ setMethod("plotInjectionPeaks", "proFIAset", function(object, subsample =
     rangex <- c(0, max(vbeginning + vl - 1))
     colvec <- makeSeparateColors(object@classes[subsample, 2])
     vleg <- table(object@classes[subsample, 2])
-    mtitle <- "Injection Peaks"
+    mtitle <- "Sample Injection Peaks"
     vcol <- NULL
     if (length(vleg) == 1) {
         mtitle <- paste(mtitle, "class", object@classes[subsample[1], 2])
@@ -1434,7 +1649,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #'  \item noise estimation. Noise is estimated.
 #'  \item bands filtering. Bands are filtered using the \code{\link{findFIASignal}} function.
 #'  \item peak grouping. Signals from different acquisition are grouped using \code{\link{group.FIA}} function.
-#'  \item missing values imputations. Missing values are imputated using \code{\link{fillPeaks.WKNN}} function.
+#'  \item missing values imputations. Missing values are imputated using \code{\link{imputeMissingValues.WKNN_TN}} function.
 #' }
 #' Minimal options to launch the workflow are provided, neithertheless if finer option tuning are
 #' necessary, launching the workflow function by function is strongly advised.
@@ -1448,7 +1663,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @param noiseEstimation A boolean indicating in noise need to be estimated.
 #' @param SNT A value giving the SNT thrshold, used only if \code{noiseEstimation} is FALSE.
 #' @param maxo Should the maximum intensity be used over the peak area.
-#' @param k The number of neighbors for \code{\link{fillPeaks.WKNN}}.
+#' @param k The number of neighbors for \code{\link{imputeMissingValues.WKNN_TN}}.
 #' @return A filled proFIAset object ready for exportation.
 #' @aliases analyzeAcquisitionFIA
 #' @examples
@@ -1477,7 +1692,7 @@ analyzeAcquisitionFIA <-
              noiseEstimation = TRUE,
              SNT = NULL,
              maxo = FALSE,
-             k = 5) {
+             k = NULL) {
         if (!dir.exists(path)) {
             stop(
                 "The specified must be a valid directory leading to an FIA experiment. Use findSignal
@@ -1522,9 +1737,14 @@ analyzeAcquisitionFIA <-
         message(mg)
         pset <- group.FIA(pset, ppmgroup, fracGroup = fracGroup)
         pset <- makeDataMatrix(pset,maxo=maxo)
+        if(!is.null(k)){
         message("Step 3 : Missing values imputation.")
-        pset <- fillPeaks.WKNN(pset, k = k)
+        pset <- imputeMissingValues.WKNN_TN(pset, k = k)
         message(paste("Processing finished."))
+        }else{
+        	message("No k given, no missing value impputation.")
+        }
+        plot(pset)
         pset
         }
 
@@ -1572,7 +1792,7 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 #     if (is.null(subsample))
 #         subsample <- 1:nrow(object@classes)
 #     if (numGroup == 1)
-#         stop("Multiple classes needs to be furnished.")
+#         stop("Multiple classes needs to be provided.")
 #     if (numGroup > 2)
 #         message("More than 2 each group will be tested against each other.")
 #     
@@ -1836,10 +2056,11 @@ keysVariableMetadata<-function(x){
         scanMax="The maximum  scan of the mass trace in the samples",
         nPeaks="The number of sample in whic the signal have been detected",
         meanSolvent="The mean level of solvent in the sample.",
-        pvalueMean="The mean p-value in the group",
-        corMean="The mean correlation with the injection peak in the sample",
-        SigSolMean="mean of signal on solvent intensity ratio",
-        shifted="indicator of time scaled signal"
+        signalOverSolventPvalueMean="The mean p-value in the group",
+        corSampPeakMean="The mean correlation with the injection peak in the sample",
+        signalOverSolventRatioMean="mean of signal on solvent intensity ratio",
+        timeShifted="indicator of time scaled signal",
+        signalOverSolventPvalueMean="Mean p-value of the grouped signal."
     )
 }
 
@@ -1864,7 +2085,7 @@ setGeneric("exportExpressionSet", function(object, ...)
 #'     eset
 #' }
 setMethod("exportExpressionSet", "proFIAset", 
-          function(object,colgroup=c("mzMed","scanMin","scanMax","nPeaks","corMean","SigSolMean","shifted")){
+          function(object,colgroup=c("mzMed","scanMin","scanMax","nPeaks","corSampPeakMean","signalOverSolventRatioMean","timeShifted","signalOverSolventPvalueMean")){
     if(nrow(object@dataMatrix)==0){
         stop("Data matrix needs  to be created for the object to be converted in ExpressionSet")
     }
@@ -1910,11 +2131,10 @@ setGeneric("exportPeakTable", function(object, ...)
 #'     \dontrun{ptable<-exportPeakTable(plasSet,filename="peak_table.tsv")}
 #' }
 setMethod("exportPeakTable", "proFIAset", 
-          function(object,colgroup=c("mzMed","corMean","meanSolvent","SigSolMean","shifted"),
+          function(object,colgroup=c("mzMed","corSampPeakMean","meanSolvent","signalOverSolventRatioMean","timeShifted","signalOverSolventPvalueMean"),
                    mval=c("zero","NA"),filename=NULL){
               mval <- match.arg(mval)
-              def <- 0
-              if(mval=="NA") def=NA
+              def <- ifelse(mval=="NA",NA,0)
               if(nrow(object@dataMatrix)==0){
                   stop("Data matrix needs  to be created for the object to be converted in peak table.")
               }
@@ -1925,9 +2145,9 @@ setMethod("exportPeakTable", "proFIAset",
               peaktable <- cbind(object@dataMatrix,object@group[,colgroup])
               peaktable <- as.data.frame(peaktable)
               ##Getting the 0
-              p0 <- which(peaktable[,1:ncol(object@dataMatrix)]==0,arr.ind=TRUE)
-              if(length(p0)!=0){
-                  peaktable[,1:ncol(object@dataMatrix)][p0]<-def
+              p0NA <- which(peaktable[,1:ncol(object@dataMatrix)]==0|is.na(peaktable[,1:ncol(object@dataMatrix)]),arr.ind=TRUE)
+              if(length(p0NA)!=0){
+                  peaktable[,1:ncol(object@dataMatrix)][p0NA]<-def
               }
               colnames(peaktable)<-vcnames
               rownames(peaktable)<-getUniqueIds(rownames(object@dataMatrix))

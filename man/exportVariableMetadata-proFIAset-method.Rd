@@ -25,7 +25,7 @@ A dataframe with the following columns :
     \item scanMax the last scan on which the signal is detected.
     \item nPeaks The number of peaks grouped in a group.
     \item meanSolvent The mean of solvent in the acquisition.
-    \item pvalueMean The mean p-value of the group.
+    \item signalOverSolventPvalue The mean p-value of the group.
     \item corMean The mean of the matrix effect indicator.
     \item SigSolMean The mean of ratio of the signal max
     intensity on the solvent max intensity.

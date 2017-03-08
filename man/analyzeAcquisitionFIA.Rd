@@ -6,7 +6,7 @@
 \usage{
 analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmgroup = NULL,
   parallel = FALSE, bpparam = NULL, noiseEstimation = TRUE, SNT = NULL,
-  maxo = FALSE, k = 5)
+  maxo = FALSE, k = NULL)
 }
 \arguments{
 \item{path}{The path to the directory of acquistion.}
@@ -27,7 +27,7 @@ analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmgroup = NULL,
 
 \item{maxo}{Should the maximum intensity be used over the peak area.}
 
-\item{k}{The number of neighbors for \code{\link{fillPeaks.WKNN}}.}
+\item{k}{The number of neighbors for \code{\link{imputeMissingValues.WKNN_TN}}.}
 }
 \value{
 A filled proFIAset object ready for exportation.
@@ -38,7 +38,7 @@ Perform the 4 steps pro fia workflow including :
  \item noise estimation. Noise is estimated.
  \item bands filtering. Bands are filtered using the \code{\link{findFIASignal}} function.
  \item peak grouping. Signals from different acquisition are grouped using \code{\link{group.FIA}} function.
- \item missing values imputations. Missing values are imputated using \code{\link{fillPeaks.WKNN}} function.
+ \item missing values imputations. Missing values are imputated using \code{\link{imputeMissingValues.WKNN_TN}} function.
 }
 Minimal options to launch the workflow are provided, neithertheless if finer option tuning are
 necessary, launching the workflow function by function is strongly advised.

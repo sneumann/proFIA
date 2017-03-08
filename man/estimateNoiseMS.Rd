@@ -5,7 +5,7 @@
 \title{Estimate the noise of a mass spectrometer using multiple MS acquisition.}
 \usage{
 estimateNoiseMS(list_files, ppm, nBin = 500, minInt = 500, maxInt = 10^8,
-  parallel, includeZero = TRUE, BPPARAM = NULL)
+  parallel, includeZero = TRUE, dmz = 5e-04, BPPARAM = NULL)
 }
 \arguments{
 \item{list_files}{A list of files in which the noise should be estimated.}
@@ -22,6 +22,8 @@ will also be used to fuse the bands if there are close enough.}
 \item{parallel}{Shall parrallelism be used.}
 
 \item{includeZero}{Should the left bin start a 0.}
+
+\item{dmz}{The dmz parameters to be passed to findBandsFIA, see \link{findBandsFIA}}
 
 \item{BPPARAM}{A BiocParallelParam object to be used for parallelism
 if parallel is TRUE.}

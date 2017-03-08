@@ -7,7 +7,7 @@
 \title{Group the peaks of an FIA acquisition.}
 \usage{
 \S4method{group.FIA}{proFIAset}(object, ppmgroup, solvar = FALSE,
-  nPoints = 1024, sleep = 0, fracGroup = 0.5)
+  nPoints = 1024, sleep = 0, dmz = 5e-04, fracGroup = 0.5)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -23,6 +23,8 @@ Default is no.}
 only needs to be changed if the number of group found seems small.}
 
 \item{sleep}{If not 0 densities are plotted every \code{sleep} ms.}
+
+\item{dmz}{A minimum mz value for the mz density of grouping.}
 
 \item{fracGroup}{The minimum fraction of samples of a class required to make
 a group.}

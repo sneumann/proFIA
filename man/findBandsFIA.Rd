@@ -5,7 +5,7 @@
 \title{Detect band in a FIA acquisition}
 \usage{
 findBandsFIA(xraw, firstScan = 1, lastScan = length(xraw@scantime),
-  ppm = 2, sizeMin = 50, dmz = 5e-04, beginning = NULL, end = NULL,
+  ppm = 2, sizeMin = NULL, dmz = 5e-04, beginning = NULL, end = NULL,
   nIso = 3, fracMin = 0.6)
 }
 \arguments{

@@ -21,10 +21,10 @@
 #'     \item maxIntensity the maximum intensity of the signal.
 #'     \item solventIntensity the intensity of the solvent, 0 means that no significant
 #'     solvent was detected.
-#'     \item corPeak An idicator of matrix effect, if it's close to 1, the compound
+#'     \item corSampPeak An idicator of matrix effect, if it's close to 1, the compound
 #'     does not suffer from heavy matrix effect, if it is inferior to 0.5, the compound
 #'     suffer from heavy matrix effect.
-#'     \item Sig_Sol The ratio of the signal max intensity on the oslvent max intensity.
+#'     \item signalOverSolventRatio The ratio of the signal max intensity on the oslvent max intensity.
 #' }
 #' @include noiseEstimator.R
 #' @slot group  A matrix containing the information on the groups done between all the
@@ -37,11 +37,12 @@
 #'     \item scanMax the last scan on which the signal is detected.
 #'     \item nPeaks The number of peaks grouped in a group.
 #'     \item meanSolvent The mean of solvent in the acquisition.
-#'     \item pvalueMean The mean p-value of the group.
+#'     \item pvalueMedian The median p-value of the group.
 #'     \item corMean The mean of the matrix effect indicator.
-#'     \item SigSolMean The mean of ratio of the signal max
+#'     \item signalOverSolventMean The mean of ratio of the signal max
 #'     intensity on the oslvent max intensity.
 #'     \item corSd The standard deviation of the matrix effect indicator.
+#'     \item timeShifted Is the peak shifted compared to the injection peak.
 #' }
 #' @slot groupidx The row of the peaks corresponding to each group
 #' in \code{peaks}.

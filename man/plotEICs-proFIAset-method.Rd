@@ -21,7 +21,7 @@ the research use the \code{\link{findMzGroup}} function.}
 
 \item{subsample}{A subset of sample to be plotted.}
 
-\item{ppm}{The tolerance for the research if mz is furnished.}
+\item{ppm}{The tolerance for the research if mz is provided.}
 
 \item{margin}{An area outer the EICs mz range on which the EIC may be extended.}
 

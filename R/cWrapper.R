@@ -38,16 +38,17 @@ findBandsFIA <-
              firstScan = 1,
              lastScan = length(xraw@scantime),
              ppm = 2,
-             sizeMin = 50,
+             sizeMin = NULL,
              dmz = 0.0005,
              beginning=NULL,
     		 end=NULL,
              nIso = 3,
     		 fracMin = 0.6) {
-    	if(is.null(beginning)|is.null(end)){
+    	if(is.null(beginning)|is.null(end)|is.null(sizeMin)){
     		vp <- determiningInjectionZone(xraw)
     		beginning <- ifelse(is.null(beginning),vp[1],beginning)
     		end <- ifelse(is.null(end),vp[2],end)
+    		sizeMin <- ifelse(is.null(sizeMin),3,sizeMin)
     	}
 
         mz <- as.numeric(xraw@env$mz)

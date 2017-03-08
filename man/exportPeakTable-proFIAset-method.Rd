@@ -6,9 +6,9 @@
 \alias{exportPeakTable,proFIAset-method}
 \title{Export proFIAset as a peak table.}
 \usage{
-\S4method{exportPeakTable}{proFIAset}(object, colgroup = c("mzMed", "corMean",
-  "meanSolvent", "SigSolMean", "shifted"), mval = c("zero", "NA"),
-  filename = NULL)
+\S4method{exportPeakTable}{proFIAset}(object, colgroup = c("mzMed",
+  "corSampPeakMean", "meanSolvent", "signalOverSolventRatioMean", "timeShifted",
+  "signalOverSolventPvalueMean"), mval = c("zero", "NA"), filename = NULL)
 }
 \arguments{
 \item{object}{A proFIAset object.}

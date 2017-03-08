@@ -35,7 +35,7 @@ estimated injection peak.
 \description{
 Determine a first approximation of the injection peak using the
 Douglas-Peuker Algorithm provided in the \code{rgeos} package.
-The object furnished must be an xcmsRaw object.
+The object provided must be an xcmsRaw object.
 }
 \examples{
 if(require(plasFIA)){
