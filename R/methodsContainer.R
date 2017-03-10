@@ -2132,7 +2132,7 @@ setGeneric("exportPeakTable", function(object, ...)
 #' }
 setMethod("exportPeakTable", "proFIAset", 
           function(object,colgroup=c("mzMed","corSampPeakMean","meanSolvent","signalOverSolventRatioMean","timeShifted","signalOverSolventPvalueMean"),
-                   mval=c("zero","NA"),filename=NULL){
+                   mval=c("NA","zero"),filename=NULL){
               mval <- match.arg(mval)
               def <- ifelse(mval=="NA",NA,0)
               if(nrow(object@dataMatrix)==0){
