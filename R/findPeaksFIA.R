@@ -125,7 +125,7 @@ fuseRange <- function(r1, r2, extend = TRUE) {
 #' a noise model is provided.
 #' @param scanmin The first scan to consider.
 #' @param scanmax The last scan to consider.
-#' @param fracPoint A filter on the number of point found in a band. 0.3 by default to allow matrix
+#' @param bandCoverage A filter on the number of point found in a band. 0.3 by default to allow matrix
 #' effect.
 #' @param sizeMin The minimum number of point considered for a band to be considred for solvent filtration.
 #' @param bandlist An optional bandlist to be passed.
@@ -184,7 +184,7 @@ findFIASignal <-
 			 pvalthresh = NULL,
 			 scanmin = 1,
 			 scanmax = length(xraw@scantime),
-			 fracPoint = 0.3,
+			 bandCoverage = 0.3,
 			 sizeMin = NULL,
 			 bandlist = NULL,
 			 ...) {
@@ -262,7 +262,7 @@ findFIASignal <-
 			end=sizepeak[2],
 			firstScan = scanmin,
 			lastScan = scanmax,
-			fracMin = fracPoint
+			fracMin = bandCoverage
 		)
 		}
 		pmmin = sizepeak[1]
@@ -641,7 +641,7 @@ findFIASignal <-
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
 				# 	bshifted <- 1
 				# }
-				if ((mean(peaklim)>mean(sizepeak[1:2]))&(!extendedFilter)) {
+				if ((mean(peaklim)>mean(sizepeak[1:2])*1.1)&(!extendedFilter)) {
 					bshifted <- 1
 				}
 				
