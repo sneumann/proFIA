@@ -409,8 +409,7 @@ switchSummaryPeak<-function(x){
 	}
 }
 
-
-#' Plot a summary of an FIA experiment.
+#' Plot a summary of an FIA acquisition.
 #'
 #' Plot a summary of an FIA acquisition. This summary aims to provides an overview of the
 #' FIA acquisition and the processinf of FIA acquisition. It includes the following graphs :
@@ -435,7 +434,7 @@ switchSummaryPeak<-function(x){
 #' @param y Unused at the moment.
 #' @param type Shall the plotting be done by sample or by class for the barplot ?
 #' 
-#' @aliases plot.FIA
+#' @aliases plot.proFIAset
 #' @return Nothing
 #' @examples
 #' if(require("plasFIA")){
@@ -510,7 +509,7 @@ setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","
 	par(mar=omar)
 	
 	###the injection peaks are plotted.
-	plotInjectionPeaks(x)
+	plotModelFlowgrams(x)
 	
 	if(vstep<2) return(invisible(NA))
 	
@@ -541,7 +540,7 @@ setGeneric("group.FIA", function(object, ...)
 #' @export
 #'
 #' @param object A proFIAset object.
-#' @param ppmgroup A ppm parameter giving the size of the windows
+#' @param ppmGroup A ppm parameter giving the size of the windows
 #' considered, we recommend to use 0.5*ppm where ppm is the pp parameter
 #' of band detection in the \code{\link{proFIAset}} function.
 #' @param nPoints the number of points used on the density, this parameter
@@ -560,14 +559,14 @@ setGeneric("group.FIA", function(object, ...)
 #' data(plasSet)
 #'
 #' #Parameters are defined.
-#' ppmgroup<-1
+#' ppmGroup<-1
 #' fracGroup<-0.2
 #'
-#' plasSet<-group.FIA(plasSet,ppmgroup=ppmgroup,fracGroup=fracGroup)
+#' plasSet<-group.FIA(plasSet,ppmGroup=ppmGroup,fracGroup=fracGroup)
 #' plasSet
 #' }
 setMethod("group.FIA", "proFIAset", function(object,
-                                             ppmgroup,
+                                             ppmGroup,
                                              solvar = FALSE,
                                              nPoints = 1024,
                                              sleep = 0,
@@ -587,7 +586,7 @@ setMethod("group.FIA", "proFIAset", function(object,
     lwd_vec <- NULL
     mzrange <- range(peaksL[, "mz"])
     #1500 is thet maximum mass of a metabolite. 1024 the number of points used in the density
-    inter <- mzrange[2] * ppmgroup * nPoints / (20 * 10 ^ 6)
+    inter <- mzrange[2] * ppmGroup * nPoints / (20 * 10 ^ 6)
     message(
         "A mass interval of ",
         sprintf("%0.4f", inter),
@@ -650,7 +649,7 @@ setMethod("group.FIA", "proFIAset", function(object,
         pos <- pos + 1
         
         ###Determining hte base of the signal to skip for a resolution.
-        bw <- max(5 * massInter[i] * ppmgroup / (10 ^ 6),dmz)
+        bw <- max(5 * massInter[i] * ppmGroup / (10 ^ 6),dmz)
         if (bw > inter / 4) {
             warning(
                 "Interval for grouping seems to short. Increase the inter parameter or modify the resolution parameter"
@@ -948,7 +947,7 @@ setGeneric("findMzGroup", function(object, ...)
 #' of the found group in the object group slot, or NA if the group is
 #' not found.
 #' @aliases findMzGroup findMzGroup,proFIAset-method
-#' @seealso  You can visualize the group using \code{\link{plotEICs}} function.
+#' @seealso  You can visualize the group using \code{\link{plotFlowgrams}} function.
 #' @examples
 #' if(require("plasFIA")){
 #' #proFIAset object is loaded
@@ -1363,8 +1362,8 @@ setMethod("exportSampleMetadata", "proFIAset", function(object, filename =
 })
 
 
-setGeneric("plotEICs", function(object, ...)
-    standardGeneric("plotEICs"))
+setGeneric("plotFlowgrams", function(object, ...)
+    standardGeneric("plotFlowgrams"))
 
 #' Plot raw temporal profiles of the selected group.
 #'
@@ -1386,15 +1385,15 @@ setGeneric("plotEICs", function(object, ...)
 #' @param area Shall the detectged area be plotted using transparency.
 #' @param ...  Supplementary graphical parameters to be passed to lines.
 #' length than index.
-#' @aliases plotEICs plotEICs,proFIAset-method
+#' @aliases plotFlowgrams plotFlowgrams,proFIAset-method
 #' @return  No returned value
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasMols)
 #'     data(plasSet)
-#'     plotEICs(plasSet,mz=plasMols[7,"mass_M+H"])
+#'     plotFlowgrams(plasSet,mz=plasMols[7,"mass_M+H"])
 #' }
-setMethod("plotEICs", "proFIAset", function(object,
+setMethod("plotFlowgrams", "proFIAset", function(object,
                                             index = NULL,
                                             mz = NULL,
                                             subsample = NULL,
@@ -1526,8 +1525,8 @@ setMethod("plotEICs", "proFIAset", function(object,
     }
 })
 
-setGeneric("plotInjectionPeaks", function(object, ...)
-    standardGeneric("plotInjectionPeaks"))
+setGeneric("plotModelFlowgrams", function(object, ...)
+    standardGeneric("plotModelFlowgrams"))
 #' Plot the injection peaks of a proFIAset object.
 #'
 #' Plot the injection peaks evaluated on each raw files
@@ -1542,14 +1541,14 @@ setGeneric("plotInjectionPeaks", function(object, ...)
 #' if it is a character it will be viewed as a factor.
 #' @param ... SUpplementary arguments which will be passed to the \link{lines}
 #' function.
-#' @aliases plotInjectionPeaks plotInjectionPeaks,proFIAset-method
+#' @aliases plotModelFlowgrams plotModelFlowgrams,proFIAset-method
 #' @return No value returned.
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasSet)
-#'     plotInjectionPeaks(plasSet)
+#'     plotModelFlowgrams(plasSet)
 #' }
-setMethod("plotInjectionPeaks", "proFIAset", function(object, subsample =
+setMethod("plotModelFlowgrams", "proFIAset", function(object, subsample =
                                                           NULL, ...) {
     if (is.null(subsample)) {
         subsample <- 1:nrow(object@classes)
@@ -1657,7 +1656,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @param path The path to the directory of acquistion.
 #' @param ppm The tolerance for deviations in m/z between scan in ppm \code{\link{findFIASignal}}
 #' @param fracGroup The fraction of smaple form a class necessary to make a group.
-#' @param ppmgroup A ppm tolerance to group signals between samples \code{\link{group.FIA}}.
+#' @param ppmGroup A ppm tolerance to group signals between samples \code{\link{group.FIA}}.
 #' @param parallel A boolean indicating if parallelism is supposed to be used.
 #' @param bpparam A BoicParallelParam object to be passed i BiocParallel is used.
 #' @param noiseEstimation A boolean indicating in noise need to be estimated.
@@ -1672,13 +1671,13 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #'     
 #'     #Defining parameters for Orbitrap fusion.
 #'     ppm<-2
-#'     ppmgroup<-1
+#'     ppmGroup<-1
 #'     paral<-FALSE
 #'     fracGroup<-0.2
 #'     k<-2
 #'     maxo<-FALSE
 #'     
-#'     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmgroup=ppmgroup,k=k,parallel=paral)}
+#'     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
 #' 
 #' }
 
@@ -1686,7 +1685,7 @@ analyzeAcquisitionFIA <-
     function(path,
              ppm,
              fracGroup = 0.5,
-             ppmgroup = NULL,
+             ppmGroup = NULL,
              parallel = FALSE,
              bpparam = NULL,
              noiseEstimation = TRUE,
@@ -1726,16 +1725,16 @@ analyzeAcquisitionFIA <-
             BPPARAM = bpparam,
             noiseEstimation = TRUE
         )
-        if (is.null(ppmgroup)) {
-            warning("ppmgroup is null default value is half of the ppm parameter value.")
-            ppmgroup <- ppm / 2
+        if (is.null(ppmGroup)) {
+            warning("ppmGroup is null default value is half of the ppm parameter value.")
+            ppmGroup <- ppm / 2
         }
         mg <- "Step 2 : Peak Grouping."
         mg <- ifelse(maxo,
                     paste(mg, "Max Intensity will be used."),
                     paste(mg, "Area will be used."))
         message(mg)
-        pset <- group.FIA(pset, ppmgroup, fracGroup = fracGroup)
+        pset <- group.FIA(pset, ppmGroup, fracGroup = fracGroup)
         pset <- makeDataMatrix(pset,maxo=maxo)
         if(!is.null(k)){
         message("Step 3 : Missing values imputation.")

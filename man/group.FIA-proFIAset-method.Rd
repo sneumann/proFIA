@@ -6,13 +6,13 @@
 \alias{group.FIA,proFIAset-method}
 \title{Group the peaks of an FIA acquisition.}
 \usage{
-\S4method{group.FIA}{proFIAset}(object, ppmgroup, solvar = FALSE,
+\S4method{group.FIA}{proFIAset}(object, ppmGroup, solvar = FALSE,
   nPoints = 1024, sleep = 0, dmz = 5e-04, fracGroup = 0.5)
 }
 \arguments{
 \item{object}{A proFIAset object.}
 
-\item{ppmgroup}{A ppm parameter giving the size of the windows
+\item{ppmGroup}{A ppm parameter giving the size of the windows
 considered, we recommend to use 0.5*ppm where ppm is the pp parameter
 of band detection in the \code{\link{proFIAset}} function.}
 
@@ -43,10 +43,10 @@ if(require("plasFIA")){
 data(plasSet)
 
 #Parameters are defined.
-ppmgroup<-1
+ppmGroup<-1
 fracGroup<-0.2
 
-plasSet<-group.FIA(plasSet,ppmgroup=ppmgroup,fracGroup=fracGroup)
+plasSet<-group.FIA(plasSet,ppmGroup=ppmGroup,fracGroup=fracGroup)
 plasSet
 }
 }

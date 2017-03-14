@@ -8,7 +8,7 @@
 \usage{
 \S4method{exportPeakTable}{proFIAset}(object, colgroup = c("mzMed",
   "corSampPeakMean", "meanSolvent", "signalOverSolventRatioMean", "timeShifted",
-  "signalOverSolventPvalueMean"), mval = c("zero", "NA"), filename = NULL)
+  "signalOverSolventPvalueMean"), mval = c("NA", "zero"), filename = NULL)
 }
 \arguments{
 \item{object}{A proFIAset object.}

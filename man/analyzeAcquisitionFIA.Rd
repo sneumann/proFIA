@@ -4,7 +4,7 @@
 \alias{analyzeAcquisitionFIA}
 \title{Wrapper function for the full FIA analysis workflow.}
 \usage{
-analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmgroup = NULL,
+analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
   parallel = FALSE, bpparam = NULL, noiseEstimation = TRUE, SNT = NULL,
   maxo = FALSE, k = NULL)
 }
@@ -15,7 +15,7 @@ analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmgroup = NULL,
 
 \item{fracGroup}{The fraction of smaple form a class necessary to make a group.}
 
-\item{ppmgroup}{A ppm tolerance to group signals between samples \code{\link{group.FIA}}.}
+\item{ppmGroup}{A ppm tolerance to group signals between samples \code{\link{group.FIA}}.}
 
 \item{parallel}{A boolean indicating if parallelism is supposed to be used.}
 
@@ -49,13 +49,13 @@ if(require(plasFIA)){
     
     #Defining parameters for Orbitrap fusion.
     ppm<-2
-    ppmgroup<-1
+    ppmGroup<-1
     paral<-FALSE
     fracGroup<-0.2
     k<-2
     maxo<-FALSE
     
-    \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmgroup=ppmgroup,k=k,parallel=paral)}
+    \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
 
 }
 }

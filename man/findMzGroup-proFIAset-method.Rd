@@ -43,6 +43,6 @@ plasSet
 }
 }
 \seealso{
-You can visualize the group using \code{\link{plotEICs}} function.
+You can visualize the group using \code{\link{plotFlowgrams}} function.
 }
 

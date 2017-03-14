@@ -578,6 +578,7 @@ findFIASignal <-
 						###Three candidates are considered, the found point, the sipzekea, and orignal value.
 						vcandidates <- c(peaklim[2],sizepeak[2],p_candidate)
 						#cat("pl2",peaklim[2],"sp2",sizepeak[2],"pc",p_candidate,"\n")
+						posMax <- posMax+which.max(vEic$intensity[c(posMax-1,posMax,posMax+1)])-2
 						psup <- which(vEic$intensity[vcandidates]<vEic$intensity[posMax])
 						vcandidates <- vcandidates[psup]
 						vval <- sapply(vcandidates,calcAngle,
@@ -938,7 +939,7 @@ determiningInjectionZone <-
 		pright <- which(lvalues>=vy[candidates_limits])
 		if(length(pright)==0){
 			warning("No right limit may be detected, this can be caused
-					by wrongly formed unjection peak.")
+					by wrongly formed injection peak.")
 			p3 <- scanmax
 		}else{
 			

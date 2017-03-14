@@ -123,12 +123,12 @@ plotRaw(plasSet, type="p", sample=3, ylim=mzrange, size=0.6)
 
 Peak detection in _**proFIA**_ is based on matched filtering. It therefore
 relies on a peak model which is tuned on the signals from the most intense ions.
-The `plotInjectionPeaks` method allows to check visually the consistency of
+The `plotModelFlowgrams` method allows to check visually the consistency of
 these reconstructed filters.
 
 ```{r plot_injection}
 # plotting the injection peak
-plotInjectionPeaks(plasSet)
+plotModelFlowgrams(plasSet)
 ```
 
 ## Peak grouping with `group.FIA`
@@ -137,7 +137,7 @@ The second step of the workflow consists in matching the signals between the
 samples. The `group.FIA` methods uses an estimation of the density in the mass
 dimension. The two important parameters are:
 
-* `ppmgroup` (numeric): accuracy of the mass spectrometer; must be inferior or equal
+* `ppmGroup` (numeric): accuracy of the mass spectrometer; must be inferior or equal
 to the corresponding value in `proFIAset`,
 
 * `fracGroup` (numeric): minimum fraction of samples with detected peaks in at
@@ -151,14 +151,14 @@ ppmgroup <- 1
 fracGroup <- 0.2
 
 # grouping
-plasSet <- group.FIA(plasSet, ppmgroup=ppmgroup, fracGroup=fracGroup)
+plasSet <- group.FIA(plasSet, ppmGroup=ppmgroup, fracGroup=fracGroup)
 ```
 
-The groups may be visualized using the **plotEICs** function, which take as input a mass and a ppm tolerance, or an index.		
+The groups may be visualized using the **plotFlowgrams** function, which take as input a mass and a ppm tolerance, or an index.		
 
 ```{r plotEICs}
 #plotting the EICs of the parameters.		
-plotEICs(plasSet,mz=plasMols[4,"mass_M+H"])
+plotFlowgrams(plasSet,mz=plasMols[4,"mass_M+H"])
 ```
 
 At this stage, it is possible to check whether a molecule (i.e., a group) has
@@ -238,7 +238,7 @@ fracGroup <- 0.2
 k <- 3
 
 # running the whole workflow in a single step
-plasSet <- analyzeAcquisitionFIA(path, ppm=ppm, ppmgroup=ppmgroup, k=k,fracGroup = fracGroup,parallel=FALSE)
+plasSet <- analyzeAcquisitionFIA(path, ppm=ppm, ppmGroup=ppmgroup, k=k,fracGroup = fracGroup,parallel=FALSE)
 
 ```
 

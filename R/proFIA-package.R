@@ -11,7 +11,6 @@
 #' 
 #' @docType package
 #' @importFrom minpack.lm nls.lm nls.lm.control
-#' @importFrom base ceil
 #' @importFrom FNN get.knn
 #' @importFrom maxLik maxLik
 #' @importFrom pracma pinv

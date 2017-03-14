@@ -9,7 +9,7 @@ findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
   solint = c("poly", "substract", "add"), fullInteg = FALSE, dmz = 5e-04,
   graphical = FALSE, SNT = NULL, f = c("regression", "TIC"),
   pvalthresh = NULL, scanmin = 1, scanmax = length(xraw@scantime),
-  fracPoint = 0.3, sizeMin = NULL, bandlist = NULL, ...)
+  bandCoverage = 0.3, sizeMin = NULL, bandlist = NULL, ...)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -54,7 +54,7 @@ a noise model is provided.}
 
 \item{scanmax}{The last scan to consider.}
 
-\item{fracPoint}{A filter on the number of point found in a band. 0.3 by default to allow matrix
+\item{bandCoverage}{A filter on the number of point found in a band. 0.3 by default to allow matrix
 effect.}
 
 \item{sizeMin}{The minimum number of point considered for a band to be considred for solvent filtration.}
