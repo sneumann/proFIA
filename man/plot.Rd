@@ -3,8 +3,8 @@
 \docType{methods}
 \name{plot,proFIAset,ANY-method}
 \alias{plot,proFIAset,ANY-method}
-\alias{plot.proFIAset}
-\title{Plot a summary of an FIA acquisition.}
+\alias{plot.FIA}
+\title{Plot a summary of an FIA experiment.}
 \usage{
 \S4method{plot}{proFIAset,ANY}(x, y = NULL, type = c("sample", "class"))
 }
@@ -54,4 +54,3 @@ if(require("plasFIA")){
 
 }
 }
-

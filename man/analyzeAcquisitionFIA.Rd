@@ -46,7 +46,7 @@ necessary, launching the workflow function by function is strongly advised.
 \examples{
 if(require(plasFIA)){
     path<-system.file(package="plasFIA","mzML")
-    
+
     #Defining parameters for Orbitrap fusion.
     ppm<-2
     ppmGroup<-1
@@ -54,9 +54,8 @@ if(require(plasFIA)){
     fracGroup<-0.2
     k<-2
     maxo<-FALSE
-    
+
     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
 
 }
 }
-

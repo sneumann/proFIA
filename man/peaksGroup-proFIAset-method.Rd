@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{peaksGroup,proFIAset-method}
-\alias{peaksGroup}
 \alias{peaksGroup,proFIAset-method}
+\alias{peaksGroup}
 \title{Return the peaks corresponding to a group.}
 \usage{
 \S4method{peaksGroup}{proFIAset}(object, index = NULL)
@@ -23,7 +23,7 @@ Return the peaks corresponding ot a gorup given by his index.
 if(require(plasFIA)){
     data(plasSet)
     data(plasMols)
-    
+
     #finding the molecules of plasMols
     vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"])
 
@@ -31,4 +31,3 @@ if(require(plasFIA)){
     head(mol_peaks)
 }
 }
-

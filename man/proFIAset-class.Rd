@@ -2,17 +2,17 @@
 % Please edit documentation in R/classContainer.R, R/methodsContainer.R
 \docType{class}
 \name{proFIAset-class}
-\alias{dataMatrix}
-\alias{dataMatrix,proFIAset-method}
-\alias{groupMatrix}
-\alias{groupMatrix,proFIAset-method}
-\alias{injectionPeaks}
-\alias{injectionPeaks,proFIAset-method}
-\alias{peaks}
-\alias{peaks,proFIAset-method}
-\alias{phenoClasses}
-\alias{phenoClasses,proFIAset-method}
 \alias{proFIAset-class}
+\alias{dataMatrix}
+\alias{peaks}
+\alias{groupMatrix}
+\alias{phenoClasses}
+\alias{injectionPeaks}
+\alias{phenoClasses,proFIAset-method}
+\alias{dataMatrix,proFIAset-method}
+\alias{groupMatrix,proFIAset-method}
+\alias{peaks,proFIAset-method}
+\alias{injectionPeaks,proFIAset-method}
 \title{An S4 class to represent an FIA experiments.}
 \usage{
 \S4method{phenoClasses}{proFIAset}(object)
@@ -44,6 +44,7 @@ are stored.
 
 \item \code{injectionPeaks}: Extract all the regressed injection peaks.
 }}
+
 \section{Slots}{
 
 \describe{

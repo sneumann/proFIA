@@ -2,8 +2,8 @@
 % Please edit documentation in R/proFIA-package.R
 \docType{package}
 \name{proFIA-package}
-\alias{proFIA}
 \alias{proFIA-package}
+\alias{proFIA}
 \title{Process FIA-HRMS datasets.}
 \description{
 Process FIA-HRMS datasets passing from raw data (mzMl, CDF,mzXML
@@ -12,8 +12,7 @@ format) to a peak table suitable for statistical anlysis.
 \details{
 The full workflow is composed of the following chain of function.
 \code{proFIAset}=>\code{group.FIA}=>\code{imputeMissingValues.WKNN_TN} and the full process is easy to automate using the
-analyzeAcquisitionFIA which do all the steps easely. Resulting table may be easely 
+analyzeAcquisitionFIA which do all the steps easely. Resulting table may be easely
 exported using the 3 exports function (\code{exportDataMatrix},\code{exportVariableMetadata}\code{exportSampleMetadata})
 Groups may be visualised using \code{plotEICs} to plot all the EICs of a group.
 }
-

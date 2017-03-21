@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{plotRaw,proFIAset-method}
-\alias{plotRaw}
 \alias{plotRaw,proFIAset-method}
+\alias{plotRaw}
 \title{plotting of raw data}
 \usage{
 \S4method{plotRaw}{proFIAset}(object, type = c("raw", "peaks"),
@@ -41,4 +41,3 @@ if(require("plasFIA")){
     plotRaw(plasSet,type="peaks",ylim=c(215.9,216.2),sample=4)
 }
 }
-

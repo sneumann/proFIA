@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{exportExpressionSet,proFIAset-method}
-\alias{exportExpressionSet}
 \alias{exportExpressionSet,proFIAset-method}
+\alias{exportExpressionSet}
 \title{Export proFIAset to ExpressionSet}
 \usage{
 \S4method{exportExpressionSet}{proFIAset}(object, colgroup = c("mzMed",
@@ -30,4 +30,3 @@ if(require("plasFIA")&require("Biobase")){
     eset
 }
 }
-

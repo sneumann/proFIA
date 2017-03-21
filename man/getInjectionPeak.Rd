@@ -52,4 +52,3 @@ if(require(plasFIA)){
   plot(vpeak,type="l")
 }
 }
-

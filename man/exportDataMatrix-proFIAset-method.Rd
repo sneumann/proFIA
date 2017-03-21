@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{exportDataMatrix,proFIAset-method}
-\alias{exportDataMatrix}
 \alias{exportDataMatrix,proFIAset-method}
+\alias{exportDataMatrix}
 \title{Export data matrix.}
 \usage{
 \S4method{exportDataMatrix}{proFIAset}(object, filename = NULL)
@@ -28,4 +28,3 @@ if(require(plasFIA)){
     head(dm)
 }
 }
-

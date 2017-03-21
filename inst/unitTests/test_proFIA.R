@@ -50,7 +50,7 @@ test_findFIASignal<-function(){
 test_group.FIA<-function(){
     if(require(plasFIA)){
     data(plasSet)
-    tg<-proFIA:::group.FIA(plasSet,ppmgroup=0.5,fracGroup=1,dmz=0.0005)
+    tg<-proFIA:::group.FIA(plasSet,ppmGroup=0.5,fracGroup=1,dmz=0.0005)
     checkEquals(nrow(tg@group),225)
     }
 }

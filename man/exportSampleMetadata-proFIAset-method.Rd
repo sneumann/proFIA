@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{exportSampleMetadata,proFIAset-method}
-\alias{exportSampleMetadata}
 \alias{exportSampleMetadata,proFIAset-method}
+\alias{exportSampleMetadata}
 \title{Export samples metadata.}
 \usage{
 \S4method{exportSampleMetadata}{proFIAset}(object, filename = NULL)
@@ -32,4 +32,3 @@ if(require(plasFIA)){
    head(tsample)
 }
 }
-

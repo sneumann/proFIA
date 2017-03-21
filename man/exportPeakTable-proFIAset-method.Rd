@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{exportPeakTable,proFIAset-method}
-\alias{exportPeakTable}
 \alias{exportPeakTable,proFIAset-method}
+\alias{exportPeakTable}
 \title{Export proFIAset as a peak table.}
 \usage{
 \S4method{exportPeakTable}{proFIAset}(object, colgroup = c("mzMed",
@@ -25,7 +25,7 @@ will be set to NA, or you can keep 0.}
 A dataframe containg the datasets.
 }
 \description{
-Export the data from a proFIAset object as 
+Export the data from a proFIAset object as
 a peak table which containes the values
 of measured for each variables for each samples
 and supplementary information.
@@ -37,9 +37,8 @@ if(require("plasFIA")){
     #Creating the peak table
     ptable<-exportPeakTable(plasSet)
     head(ptable)
-    
+
     #Directly in a file
     \dontrun{ptable<-exportPeakTable(plasSet,filename="peak_table.tsv")}
 }
 }
-

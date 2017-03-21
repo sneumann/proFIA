@@ -23,7 +23,7 @@ acquisitionDirectory <- function(files = NULL) {
     ###Case where it is a single path.
     if (!dir.exists(files))
         return(NA)
-    
+
     filepattern <-
         c(
             "[Cc][Dd][Ff]",
@@ -75,9 +75,9 @@ acquisitionDirectory <- function(files = NULL) {
  setGeneric("phenoClasses", function(object, ...)
      standardGeneric("phenoClasses"))
 # #' Extract the classes table from a proFIAset object
-# #' 
+# #'
 # #' Extract the classes table from a proFIAset object.
-# #' 
+# #'
 # #' @export
 # #' @param object A proFIAset object.
 # #' @return a table containing two columns, the absolute paths
@@ -132,7 +132,7 @@ setMethod("dataMatrix", "proFIAset", function(object) {
      standardGeneric("groupMatrix"))
 # #' Extract the group matrix from a proFIAset object
 # #'
-# #' Extract the group matrix from a proFIAset object. 
+# #' Extract the group matrix from a proFIAset object.
 # #' We recommend to use the \code{\link{exportPeakTable}}
 # #' function for a more formalized output.
 # #'
@@ -157,10 +157,10 @@ setMethod("groupMatrix", "proFIAset", function(object) {
 
 
 # #' Extract the peaks matrix from a proFIAset object
-# #' 
+# #'
 # #' Extract all the peak detected from an FIA acquisition.
 # #' The output may be space consuming.
-# #' 
+# #'
 # #' @export
 # #' @param object A proFIAset object.
 # #' @return a matrix with peaks as rows and informations on peaks as columns.
@@ -216,7 +216,7 @@ setMethod("injectionPeaks", "proFIAset", function(object) {
 #' @param BPPARAM A BiocParallelParam object to be used for parallelism
 #' if parallel is TRUE.
 #' @param graphical Shall the plot of the regressed injection peak be shown.
-#' @param ... Supplementary arguments to be passed to findFIAsignal, see 
+#' @param ... Supplementary arguments to be passed to findFIAsignal, see
 #' \code{\link{findFIASignal}}.
 #' @aliases proFIAset
 #' @seealso  To obtain more detail about the output see \code{\link{proFIAset-class}}.
@@ -232,7 +232,7 @@ setMethod("injectionPeaks", "proFIAset", function(object) {
 #'
 #' plasSet<-proFIAset(pathplas,ppm=ppm,parallel=parallel)
 #' plasSet
-#' 
+#'
 #' }
 proFIAset <-
     function(path,
@@ -265,7 +265,7 @@ proFIAset <-
             max(vxraw@env$intensity)
         })
         vmint <- 2*max(vmint)
-        
+
         ###The nois emodel is estimated.
         nes <- NULL
         if (noiseEstimation) {
@@ -296,8 +296,8 @@ proFIAset <-
         }
         pFIA@noiseEstimation <- nes
         ###We keep all the bands if possible.
-        
-        
+
+
         lRes <- list()
         if (parallel & requireNamespace("BiocParallel")) {
             if (is.null(BPPARAM))
@@ -328,7 +328,7 @@ proFIAset <-
             )
         }
         ###The returned matrix is a res.
-        
+
         matRes <- lapply(lRes, function(x) {
             x$signals
         })
@@ -338,7 +338,7 @@ proFIAset <-
         lBegin <- sapply(lRes, function(x) {
             x$injectionScan
         })
-        
+
         nPeaks <- lapply(matRes, nrow)
         vecClass <- rep(as.numeric(1:nrow(pFIA@classes)), times = unlist(nPeaks))
         matRes <- do.call(rbind, matRes)
@@ -378,7 +378,7 @@ setMethod("show", "proFIAset", function(object) {
     if (nrow(object@peaks) > 0) {
         cat(nrow(object@peaks), " peaks detected.\n")
     }
-    
+
     if (nrow(object@group) > 0) {
         cat(nrow(object@group), " features have been grouped.\n")
     }
@@ -399,7 +399,7 @@ switchSummaryPeak<-function(x){
 	if(x==1){
 		return("Heavy shape distorsion (corSampPeak<0.2)")
 	}
-	
+
 	###Thess case are never uspposed to happens.
 	if(x==2){
 		return("Shifted in time")
@@ -409,7 +409,10 @@ switchSummaryPeak<-function(x){
 	}
 }
 
-#' Plot a summary of an FIA acquisition.
+
+# if (!isGeneric("plot"))
+# 	setGeneric("plot", function(x, y, ...) standardGeneric("plot"))
+#' Plot a summary of an FIA experiment.
 #'
 #' Plot a summary of an FIA acquisition. This summary aims to provides an overview of the
 #' FIA acquisition and the processinf of FIA acquisition. It includes the following graphs :
@@ -434,7 +437,7 @@ switchSummaryPeak<-function(x){
 #' @param y Unused at the moment.
 #' @param type Shall the plotting be done by sample or by class for the barplot ?
 #' 
-#' @aliases plot.proFIAset
+#' @aliases plot.FIA
 #' @return Nothing
 #' @examples
 #' if(require("plasFIA")){
@@ -493,7 +496,7 @@ setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","
 		vres <- as.numeric(tx)
 		names(vres) <- names(tx)
 		vres
-		})
+	})
 	valHeight <- as.matrix(valHeight[,-1])
 	maxy <- apply(valHeight,1,sum)
 	if(type=="sample"){
@@ -525,7 +528,6 @@ setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","
 	par(mar=vomar)
 	return(invisible(NA))
 })
-
 
 
 
@@ -603,7 +605,7 @@ setMethod("group.FIA", "proFIAset", function(object,
     massInter <- seq(mzrange[1], mzrange[2], inter / 2)
     masspos <- findEqualGreaterM(peaksL[, "mz"], massInter)
     num_group <- 0
-    
+
     tabclasses <- table(as.character(object@classes[, 2]))
     legList <- c(
         "mzMed",
@@ -647,7 +649,7 @@ setMethod("group.FIA", "proFIAset", function(object,
             next
         subpeakl <- peaksL[start:end,]
         pos <- pos + 1
-        
+
         ###Determining hte base of the signal to skip for a resolution.
         bw <- max(5 * massInter[i] * ppmGroup / (10 ^ 6),dmz)
         if (bw > inter / 4) {
@@ -664,7 +666,7 @@ setMethod("group.FIA", "proFIAset", function(object,
                     bw,
                 n = nPoints
             )
-        
+
         ###Putting the close to 0 to 0
         maxy <- max(den$y)
         den$y[which(den$y <= bw * maxy)] = 0
@@ -676,7 +678,7 @@ setMethod("group.FIA", "proFIAset", function(object,
         ###Peak are detected while density peaks remains in the selected interval.
         repeat {
             plim <- findLimDensity(den$y, plim[2] + 1, plim[3])
-            
+
             if (plim[1] == plim[2])
                 ###In this case the last peak is found.
                 break
@@ -689,7 +691,7 @@ setMethod("group.FIA", "proFIAset", function(object,
             #         next
             #       }
             num_group <- num_group + 1
-            
+
             ###Extending the maximal number of peaks if needed.
             if (num_group > nrow(groupmat)) {
                 groupmat <-
@@ -699,7 +701,7 @@ setMethod("group.FIA", "proFIAset", function(object,
                     ))
                 listgroup <- c(listgroup, vector("list", length(listgroup)))
             }
-            
+
             ###Checking if the group have not been added during th previous group.
             if (median(subpeakl[selectedPGroup, "mz"]) %in% oldMz ||
                 (abs(median(subpeakl[selectedPGroup, "mz"]) - massInter[i]) < bw) ||
@@ -729,7 +731,7 @@ setMethod("group.FIA", "proFIAset", function(object,
                     break
                 }
             }
-            
+
             ###If the peak is not reproductible, pass.
             if (!found) {
                 num_group <- num_group - 1
@@ -738,7 +740,7 @@ setMethod("group.FIA", "proFIAset", function(object,
             #       legList = c(
             #         "mzmed", "mzmin", "mzmax", "sizesamp", "scanmin", "scanmax","npeaks","solvent"
             #       )
-            
+
             groupmat[num_group, "scanMin"] <-
                 min(subpeakl[posSample, "scanMin"])
             groupmat[num_group, "scanMax"] <-
@@ -747,15 +749,15 @@ setMethod("group.FIA", "proFIAset", function(object,
                 median(subpeakl[posSample, "scanMax"] - subpeakl[posSample, "scanMin"])
             groupmat[num_group, "mzMed"] <-
                 median(subpeakl[selectedPGroup, "mz"])
-            
+
             ##mz is stocked.
             previousMz <- c(previousMz, groupmat[num_group, 1])
             groupmat[num_group, c("mzMin", "mzMax")] <-
                 range(c(subpeakl[selectedPGroup, "mzmin"], subpeakl[selectedPGroup, "mzmax"]))
-            
+
             groupmat[num_group, "nPeaks"] <- length(posSample)
             groupmat[num_group, "timeShifted"] <- ifelse(sum(subpeakl[selectedPGroup, "timeShifted"])==0,0,1)
-            
+
             groupmat[num_group, "meanSolvent"] <-
                 mean(subpeakl[posSample, "solventIntensity"])
             if (boolpval) {
@@ -773,7 +775,7 @@ setMethod("group.FIA", "proFIAset", function(object,
             ###Adding the detected group to the current list.
             GraphPeakBegin <- c(GraphPeakBegin, plim[1])
             GraphPeakEnd <- c(GraphPeakEnd, plim[2])
-            
+
         }
         oldMz <- previousMz
         if (sleep > 0 & !is.null(GraphPeakBegin)) {
@@ -805,9 +807,9 @@ setMethod("group.FIA", "proFIAset", function(object,
                    col =
                        col_vec[start:end],
                    type = "h")
-            
+
             ###Adding the solvent lvl.
-            
+
             legend(
                 "topright",
                 c(as.character(uclasses), "peaks detected"),
@@ -818,11 +820,11 @@ setMethod("group.FIA", "proFIAset", function(object,
             )
             Sys.sleep(sleep)
         }
-        
+
     }
     #colnames(groupmat)<-c("mz","mzmin","mzmax","size","scan_min","scan_max","num_peaks","label")
     groupmat <- groupmat[1:num_group,]
-    
+
     cat("\n", nrow(groupmat), " groups have been done .\n")
     object@group <- groupmat
     object@groupidx <- listgroup[1:num_group]
@@ -842,7 +844,7 @@ getRawName <- function(filenames) {
 getUniqueIds <- function(ids){
 	tid <- table(ids)
 	pmul <- which(tid>1)
-	
+
 	lab <- names(tid)
 	if(length(pmul)>0){
 		for(i in 1:length(pmul)){
@@ -965,7 +967,7 @@ setGeneric("findMzGroup", function(object, ...)
 #' index=findMzGroup(plasSet,mass,tol=1)
 #' plasSet
 #' }
- 
+
 setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
     if(nrow(object@group)==0) stop("group needs to be created before using findMzGroup. See ?group.FIA.")
     vecRes <- rep(NA, length(mz))
@@ -977,7 +979,7 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
             pos <- pos[best]
         }
         ##Checking if the found group got his med mz close to the peak.
-        
+
         if (length(pos) == 0 | is.null(pos)) {
             vecRes[i] = NA
         } else{
@@ -988,7 +990,7 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
                 vecRes[i] = pos
             }
         }
-        
+
     }
     vecRes
 })
@@ -1007,7 +1009,7 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
 ## ## @examples
 ## ## if(require(plasFIA)){
 ## ##     data(plasSet)
-## ##     
+## ##
 ## ##     ###Reinitializing the data matrix
 ## ##     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
 ## ##     plasSet<-fillPeaks.WKNN(plasSet,2)
@@ -1016,11 +1018,11 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
 ##     if(object@step=="Fillpeaks"){
 ##         stop("You should not perform fillPeaks on a matrix which have already been filled. Use makeDataMatrix again.")
 ##     }
-## 
+##
 ##     if(object@step != "Matrix_created"){
 ##         stop("Impossible to perform fillPeaks without data matrix, see ?makeDataMatrix.")
 ##     }
-##     
+##
 ##     if(k==1){
 ##         warning("It is strongly discouraged to do 1-nearest neighbour.")
 ##     }
@@ -1032,11 +1034,11 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
 ##     mdataMatrix <- t(apply(mdataMatrix,1,function(x){
 ##     	x/max(max(x),1)
 ##     }))
-##     
+##
 ##     knntab <- get.knn(mdataMatrix, k = min(k * 5, floor(nrow(mdataMatrix) / 2))) ###Supposition that there is less than 50% missing values.
 ##     ###For each varaible getting the concerned element
 ##     matcoef <- knntab$nn.dist
-##     
+##
 ##     ###Handling the case where the signal is never found.
 ##     matcoef <- matcoef / apply(matcoef, 1, function(x) {
 ##         if (any(x != 0)) {
@@ -1045,7 +1047,7 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
 ##             return(1)
 ##         }
 ##     })
-##     
+##
 ##     for (j in 1:ncol(mdataMatrix)) {
 ##         pok <- which(mdataMatrix[, j] != 0)
 ##         pos0 <- (1:nrow(mdataMatrix))[-pok]
@@ -1088,7 +1090,7 @@ setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasSet)
-#'     
+#'
 #'     ###Reinitializing the data matrix
 #'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
 #'     plasSet<-imputeMissingValues.WKNN_TN(plasSet,2)
@@ -1101,7 +1103,7 @@ setMethod("imputeMissingValues.WKNN_TN","proFIAset",function(object,k=0.6,classe
 	if(k!=round(k)&(k<=2)){
 		stop("k should be an integer superior to 2 or a real inferior to one.")
 	}
-	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then 
+	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then
 									  impute missing values.")
 	dm <- dataMatrix(object)
 	dm[which(dm==0,arr.ind = TRUE)] <- NA
@@ -1120,21 +1122,21 @@ setMethod("imputeMissingValues.WKNN_TN","proFIAset",function(object,k=0.6,classe
 			i_k <- ifelse(k==round(k),k,ceiling(k*length(psample)))
 			temp_res <- imputeKNN(dm[,psample,drop=FALSE],k = i_k,distance="truncation")
 			resMatrix[,psample] <- temp_res$imputedData
-			
+
 			cat(length(b_imputation),"vs",length(temp_res$problems))
 			b_imputation <- b_imputation&temp_res$problems
 		}
-		
+
 	}else{
 		psample <- 1:ncol(dm)
-		i_k <- ifelse(k==round(k),k,ceil(k*length(psample)))
+		i_k <- ifelse(k==round(k),k,ceiling(k*length(psample)))
 		temp_res <- imputeKNN(dm[,psample,drop=FALSE],k = i_k,distance="truncation")
 		resMatrix[,psample] <- temp_res$imputedData
 		b_imputation <- b_imputation&temp_res$problems
 	}
-	
+
 	object@dataMatrix <- 10^resMatrix
-	
+
 	cnames <- colnames(object@group)
 	object@group <- cbind(object@group,as.numeric(b_imputation))
 	colnames(object@group) <- c(cnames,"imputationOk")
@@ -1157,7 +1159,7 @@ setGeneric("peaksGroup", function(object, ...)
 #' if(require(plasFIA)){
 #'     data(plasSet)
 #'     data(plasMols)
-#'     
+#'
 #'     #finding the molecules of plasMols
 #'     vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"])
 #'
@@ -1294,7 +1296,7 @@ setGeneric("exportVariableMetadata", function(object, ...)
 #' }
 #' @aliases exportVariableMetadata exportVariableMetadata,proFIAset-method
 #' @examples
-#' if(require(plasFIA)){ 
+#' if(require(plasFIA)){
 #'   data(plasSet)
 #'   vtab<-exportVariableMetadata(plasSet)
 #'   head(vtab)
@@ -1468,7 +1470,7 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
         ileg <- match(unique(object@classes[subsample, 2]),object@classes[subsample, 2])
         ileg <- floor((ileg+c((ileg[-1]-1),length(subsample)))/2)
     }
-    ###Now we create the area color if necessary 
+    ###Now we create the area color if necessary
     colarea <- NULL
     if(area){
     	colarea <- col2rgb(colvec)
@@ -1476,9 +1478,9 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     		rgb(x[1],x[2],x[3],80,maxColorValue = 255)
     	})
     }
-    
-    
-    
+
+
+
     maxx  <-  max(unlist(sapply(vall, function(x) {
         x$scantime
     })))
@@ -1495,8 +1497,8 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
         }else{
             mtitle <- title[i]
         }
-        
-        
+
+
         plot(
             NULL,
             xlab  =  "Time (s)",
@@ -1517,19 +1519,19 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
         if (length(unique(object@classes[subsample, 2])) == 1) {
             legend(posleg,as.character(proFIA:::getRawName(object@classes[subsample, 1]))[pok],lty=rep(1,length(subsample))[pok],col=colvec[pok])
         } else{
-            legend(posleg,as.character(unique(object@classes[subsample, 2])),lty=rep(1,length(unique(object@classes[subsample, 2]))),col = 
+            legend(posleg,as.character(unique(object@classes[subsample, 2])),lty=rep(1,length(unique(object@classes[subsample, 2]))),col =
                        colvec[ileg])
         }
-        
-        
+
+
     }
 })
 
 setGeneric("plotModelFlowgrams", function(object, ...)
     standardGeneric("plotModelFlowgrams"))
-#' Plot the injection peaks of a proFIAset object.
+#' Plot the model flowgrams of a proFIAset object.
 #'
-#' Plot the injection peaks evaluated on each raw files
+#' Plot the model flowgrams evaluated on each raw files
 #' of a proFIAset object one plot. If a peak is really
 #' different from the other it can indicater an error in
 #' the injection process.
@@ -1539,6 +1541,7 @@ setGeneric("plotModelFlowgrams", function(object, ...)
 #' @param subsample The subset of sample on which the sample may be plotted.
 #' If it is numeric it will be viewed as sample row in the classes table,
 #' if it is a character it will be viewed as a factor.
+#' @param diagPlotL Boolean used by the plot function.
 #' @param ... SUpplementary arguments which will be passed to the \link{lines}
 #' function.
 #' @aliases plotModelFlowgrams plotModelFlowgrams,proFIAset-method
@@ -1549,58 +1552,68 @@ setGeneric("plotModelFlowgrams", function(object, ...)
 #'     plotModelFlowgrams(plasSet)
 #' }
 setMethod("plotModelFlowgrams", "proFIAset", function(object, subsample =
-                                                          NULL, ...) {
-    if (is.null(subsample)) {
-        subsample <- 1:nrow(object@classes)
-    } else if (is.character(subsample)) {
-        message("subsample is a character trying to match it as a factor.")
-        subsample <- which(object@classes[, 2] %in% subsample)
-        if (length(subsample) == 0)
-            stop(
-                "Wrong subsample provided, subsample shall be a number
-                or a class of the proFIAset object."
-            )
-    } else if (is.numeric(subsample)) {
-        if (any(subsample > nrow(object@classes)))
-            stop("Subsample shall be less than the number of  sample.")
-    }
-    toPlot <- object@injectionPeaks[subsample]
-    vbeginning <- object@injectionScan[subsample]
-    vl <- sapply(toPlot, length)
-    rangex <- c(0, max(vbeginning + vl - 1))
-    colvec <- makeSeparateColors(object@classes[subsample, 2])
-    vleg <- table(object@classes[subsample, 2])
-    mtitle <- "Sample Injection Peaks"
-    vcol <- NULL
-    if (length(vleg) == 1) {
-        mtitle <- paste(mtitle, "class", object@classes[subsample[1], 2])
-    } else{
-        vleg <- cumsum(as.numeric(vleg))
-        print(vleg)
-        vcol <- colvec[vleg]
-        vleg <- object@classes[subsample[vleg], 2]
-    }
-    plot(
-        NULL,
-        xlab = "Time (s)",
-        ylab = "Injection Peak",
-        main = mtitle,
-        xlim = rangex,
-        ylim = c(0, 1)
-    )
-    for (i in 1:length(subsample)) {
-        lines((vbeginning[i]):(vbeginning[i] + vl[i] - 1),
-              toPlot[[i]],
-              col = colvec[i],
-              ...)
-    }
-    if (length(vleg) != 1) {
-        legend("topright",
-               as.character(vleg),
-               col = vcol,
-               lty = 1)
-    }
-    return(invisible(object@dataMatrix))
+                                                          NULL, diagPlotL = FALSE, ...) {
+	if (is.null(subsample)) {
+		subsample <- 1:nrow(object@classes)
+	} else if (is.character(subsample)) {
+		message("subsample is a character trying to match it as a factor.")
+		subsample <- which(object@classes[, 2] %in% subsample)
+		if (length(subsample) == 0)
+			stop(
+				"Wrong subsample provided, subsample shall be a number
+				or a class of the proFIAset object."
+			)
+	} else if (is.numeric(subsample)) {
+		if (any(subsample > nrow(object@classes)))
+			stop("Subsample shall be less than the number of  sample.")
+	}
+	toPlot <- object@injectionPeaks[subsample]
+	vbeginning <- object@injectionScan[subsample]
+	vl <- sapply(toPlot, length)
+	rangex <- c(0, max(vbeginning + vl - 1))
+	colvec <- makeSeparateColors(object@classes[subsample, 2])
+	vleg <- table(object@classes[subsample, 2])
+	## mtitle <- "Sample Injection Peaks"
+	mtitle <- "Flowgrams for peak modeling"
+	vcol <- NULL
+	if (length(vleg) == 1) {
+		## mtitle <- paste(mtitle, "class", object@classes[subsample[1], 2])
+	} else{
+		vleg <- cumsum(as.numeric(vleg))
+		print(vleg)
+		vcol <- colvec[vleg]
+		vleg <- object@classes[subsample[vleg], 2]
+	}
+	if(diagPlotL) {
+		omar <- par("mar")
+		par(mar=c(2.6,2.6,2.1,1.1))
+	}
+	plot(
+		NULL,
+		## xlab = "Time (s)",
+		## ylab = "Injection Peak",
+		main = mtitle,
+		xlim = rangex,
+		ylim = c(0, 1)
+	)
+	if(diagPlotL) {
+		par(mar = omar)    
+	}
+	mtext("Time (s)", side = 1, line = 2.5, cex = 0.7)
+	## mtext(mtitle, line = 1, cex = 0.8)
+	for (i in 1:length(subsample)) {
+		lines((vbeginning[i]):(vbeginning[i] + vl[i] - 1),
+			  toPlot[[i]],
+			  col = colvec[i],
+			  ...)
+	}
+	if (length(vleg) != 1) {
+		legend("topright",
+			   as.character(vleg),
+			   col = vcol,
+			   lty = 1)
+	}
+	return(invisible(object@dataMatrix))
 })
 
 
@@ -1668,7 +1681,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @examples
 #' if(require(plasFIA)){
 #'     path<-system.file(package="plasFIA","mzML")
-#'     
+#'
 #'     #Defining parameters for Orbitrap fusion.
 #'     ppm<-2
 #'     ppmGroup<-1
@@ -1676,9 +1689,9 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #'     fracGroup<-0.2
 #'     k<-2
 #'     maxo<-FALSE
-#'     
+#'
 #'     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
-#' 
+#'
 #' }
 
 analyzeAcquisitionFIA <-
@@ -1772,7 +1785,7 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 # #####BETA THose feature won(t be exported but will be disponible in near future)
 # setGeneric("compareClasses", function(object, ...)
 #     standardGeneric("compareClasses"))
-# 
+#
 # #' t-test of variables to check mean egality.
 # #'
 # #'Compare the mean of all the variables present in the
@@ -1794,8 +1807,8 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 #         stop("Multiple classes needs to be provided.")
 #     if (numGroup > 2)
 #         message("More than 2 each group will be tested against each other.")
-#     
-#     
+#
+#
 #     #####Generating the list of sample to do
 #     uSample <- unique(object@classes[, 2])
 #     toCompare <- combn(uSample, 2)
@@ -1814,7 +1827,7 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 #         abslab <- paste("p.value", nameVec[i], sep = "_")
 #         ###Removing the 0 if there is some.
 #         submat <- dataMatrix(object)[, c(vx, vy)]
-#         
+#
 #         ##Calculating the p-value.
 #         pvalv <- apply(submat, 1, function(x, nx, ny) {
 #             px0 <- which(x[1:nx] == 0)
@@ -1832,7 +1845,7 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 #             vt <- t.test(x[1:nx], x[(nx + 1):(nx + ny)])
 #             c(vt[["p.value"]])
 #         }, nx = nx, ny = ny)
-#         
+#
 #         ##Calculating the fold change.
 #         foldv <- apply(submat, 1, function(x, nx, ny) {
 #             px0 <- which(x[1:nx] == 0)
@@ -1852,10 +1865,10 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 #             fold <- mean(x[1:nx]) / mean(x[(nx + 1):(nx + ny)])
 #             fold
 #         }, nx = nx, ny = ny)
-#         
+#
 #         #Cal
-#         
-#         
+#
+#
 #         lRes[[i]] = pvalv
 #     }
 #     lRes <- do.call("cbind", lRes)
@@ -1890,7 +1903,7 @@ plotVoidRaw <-
         } else{
             xlim <- c(0, max(scantime))
         }
-        
+
         if ("ylim" %in% names(largs)) {
             ylim <- largs[["ylim"]]
             pok <- which(mz <= ylim[2] & mz >= ylim[1])
@@ -1906,10 +1919,10 @@ plotVoidRaw <-
         } else{
             size <- 0.4
         }
-        
+
         ##Getting the color
         vpal <- colorRampPalette(c("green", "orange", "red"))
-        
+
         ###Making the color vec
         rInt <- range(int)
         rInt[1] <- floor(rInt[1] - 0.01)
@@ -2083,7 +2096,7 @@ setGeneric("exportExpressionSet", function(object, ...)
 #'     eset<-exportExpressionSet(plasSet)
 #'     eset
 #' }
-setMethod("exportExpressionSet", "proFIAset", 
+setMethod("exportExpressionSet", "proFIAset",
           function(object,colgroup=c("mzMed","scanMin","scanMax","nPeaks","corSampPeakMean","signalOverSolventRatioMean","timeShifted","signalOverSolventPvalueMean")){
     if(nrow(object@dataMatrix)==0){
         stop("Data matrix needs  to be created for the object to be converted in ExpressionSet")
@@ -2104,7 +2117,7 @@ setGeneric("exportPeakTable", function(object, ...)
 
 #' Export proFIAset as a peak table.
 #'
-#'Export the data from a proFIAset object as 
+#'Export the data from a proFIAset object as
 #'a peak table which containes the values
 #'of measured for each variables for each samples
 #'and supplementary information.
@@ -2125,11 +2138,11 @@ setGeneric("exportPeakTable", function(object, ...)
 #'     #Creating the peak table
 #'     ptable<-exportPeakTable(plasSet)
 #'     head(ptable)
-#'     
+#'
 #'     #Directly in a file
 #'     \dontrun{ptable<-exportPeakTable(plasSet,filename="peak_table.tsv")}
 #' }
-setMethod("exportPeakTable", "proFIAset", 
+setMethod("exportPeakTable", "proFIAset",
           function(object,colgroup=c("mzMed","corSampPeakMean","meanSolvent","signalOverSolventRatioMean","timeShifted","signalOverSolventPvalueMean"),
                    mval=c("NA","zero"),filename=NULL){
               mval <- match.arg(mval)

@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{exportVariableMetadata,proFIAset-method}
-\alias{exportVariableMetadata}
 \alias{exportVariableMetadata,proFIAset-method}
+\alias{exportVariableMetadata}
 \title{Export variable metadata.}
 \usage{
 \S4method{exportVariableMetadata}{proFIAset}(object, filename = NULL)
@@ -36,10 +36,9 @@ Export the variable metadata of an experiment, to
 be used for statistical analysis.
 }
 \examples{
-if(require(plasFIA)){ 
+if(require(plasFIA)){
   data(plasSet)
   vtab<-exportVariableMetadata(plasSet)
   head(vtab)
 }
 }
-

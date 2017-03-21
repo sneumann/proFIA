@@ -2,11 +2,12 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{plotModelFlowgrams,proFIAset-method}
-\alias{plotModelFlowgrams}
 \alias{plotModelFlowgrams,proFIAset-method}
-\title{Plot the injection peaks of a proFIAset object.}
+\alias{plotModelFlowgrams}
+\title{Plot the model flowgrams of a proFIAset object.}
 \usage{
-\S4method{plotModelFlowgrams}{proFIAset}(object, subsample = NULL, ...)
+\S4method{plotModelFlowgrams}{proFIAset}(object, subsample = NULL,
+  diagPlotL = FALSE, ...)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -15,6 +16,8 @@
 If it is numeric it will be viewed as sample row in the classes table,
 if it is a character it will be viewed as a factor.}
 
+\item{diagPlotL}{Boolean used by the plot function.}
+
 \item{...}{SUpplementary arguments which will be passed to the \link{lines}
 function.}
 }
@@ -22,7 +25,7 @@ function.}
 No value returned.
 }
 \description{
-Plot the injection peaks evaluated on each raw files
+Plot the model flowgrams evaluated on each raw files
 of a proFIAset object one plot. If a peak is really
 different from the other it can indicater an error in
 the injection process.
@@ -33,4 +36,3 @@ if(require(plasFIA)){
     plotModelFlowgrams(plasSet)
 }
 }
-

@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{makeDataMatrix,proFIAset-method}
-\alias{makeDataMatrix}
 \alias{makeDataMatrix,proFIAset-method}
+\alias{makeDataMatrix}
 \title{Construct the data matrix of a proFIAset object.}
 \usage{
 \S4method{makeDataMatrix}{proFIAset}(object, maxo = FALSE)
@@ -32,4 +32,3 @@ plasSet
 \seealso{
 To obtain this data matrix see \code{\link{proFIAset}}.
 }
-

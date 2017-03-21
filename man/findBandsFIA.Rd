@@ -54,4 +54,3 @@ if(require(plasFIA)){
   head(tbands)
 }
 }
-

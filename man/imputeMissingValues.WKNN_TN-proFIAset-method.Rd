@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{imputeMissingValues.WKNN_TN,proFIAset-method}
-\alias{imputeMissingValues.WKNN_TN}
 \alias{imputeMissingValues.WKNN_TN,proFIAset-method}
+\alias{imputeMissingValues.WKNN_TN}
 \title{Fill missing values in the peak table.}
 \usage{
 \S4method{imputeMissingValues.WKNN_TN}{proFIAset}(object, k = 0.6,
@@ -29,10 +29,9 @@ K-Nearest Neighbours on Truncated Distribution described by Jasmit S. Shah et al
 \examples{
 if(require(plasFIA)){
     data(plasSet)
-    
+
     ###Reinitializing the data matrix
     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
     plasSet<-imputeMissingValues.WKNN_TN(plasSet,2)
 }
 }
-

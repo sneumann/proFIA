@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{plotFlowgrams,proFIAset-method}
-\alias{plotFlowgrams}
 \alias{plotFlowgrams,proFIAset-method}
+\alias{plotFlowgrams}
 \title{Plot raw temporal profiles of the selected group.}
 \usage{
 \S4method{plotFlowgrams}{proFIAset}(object, index = NULL, mz = NULL,
@@ -51,4 +51,3 @@ if(require(plasFIA)){
     plotFlowgrams(plasSet,mz=plasMols[7,"mass_M+H"])
 }
 }
-

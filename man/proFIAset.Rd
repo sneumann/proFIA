@@ -21,7 +21,7 @@ if parallel is TRUE.}
 
 \item{graphical}{Shall the plot of the regressed injection peak be shown.}
 
-\item{...}{Supplementary arguments to be passed to findFIAsignal, see 
+\item{...}{Supplementary arguments to be passed to findFIAsignal, see
 \code{\link{findFIASignal}}.}
 }
 \value{
@@ -48,4 +48,3 @@ plasSet
 \seealso{
 To obtain more detail about the output see \code{\link{proFIAset-class}}.
 }
-

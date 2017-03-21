@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{group.FIA,proFIAset-method}
-\alias{group.FIA}
 \alias{group.FIA,proFIAset-method}
+\alias{group.FIA}
 \title{Group the peaks of an FIA acquisition.}
 \usage{
 \S4method{group.FIA}{proFIAset}(object, ppmGroup, solvar = FALSE,
@@ -50,4 +50,3 @@ plasSet<-group.FIA(plasSet,ppmGroup=ppmGroup,fracGroup=fracGroup)
 plasSet
 }
 }
-

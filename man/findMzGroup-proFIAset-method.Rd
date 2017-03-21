@@ -2,8 +2,8 @@
 % Please edit documentation in R/methodsContainer.R
 \docType{methods}
 \name{findMzGroup,proFIAset-method}
-\alias{findMzGroup}
 \alias{findMzGroup,proFIAset-method}
+\alias{findMzGroup}
 \title{find a group in a FIA experiment.}
 \usage{
 \S4method{findMzGroup}{proFIAset}(object, mz, tol = 0)
@@ -45,4 +45,3 @@ plasSet
 \seealso{
 You can visualize the group using \code{\link{plotFlowgrams}} function.
 }
-
