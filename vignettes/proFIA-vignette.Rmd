@@ -1,7 +1,7 @@
 ---
 title: "*proFIA*: Preprocessing data from flow injection analysis coupled to 
 high-resolution mass spectrometry (FIA-HRMS)"
-author: "Alexis Delabriere and Eteinne Thevenot"
+author: "Alexis Delabriere and Etienne Thevenot"
 date: "`r Sys.Date()`"
 
 vignette: >

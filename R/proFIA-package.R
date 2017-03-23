@@ -26,6 +26,7 @@
 #' @importFrom Biobase AnnotatedDataFrame ExpressionSet
 #' @importFrom BiocParallel bplapply bpparam
 #' @importFrom ropls opls
+#' @importMethodsFrom ropls plot
 #' @name proFIA-package
 #' @aliases proFIA proFIA-package
 NULL
