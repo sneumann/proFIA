@@ -42,7 +42,9 @@ No returned value
 \description{
 Plot raw temporal profiles from \code{\link{proFIAset}} object
 corresponding to one or more molecules. The function will priorize
-index, only using mz if index is set to \code{NULL}.
+index, only using mz if index is set to \code{NULL}. As this require to come
+back to the raw data, this can take some times, an we don't recommend using it
+on more than 30 files. It is better to choose 30 files in the proFIAset object.
 }
 \examples{
 if(require(plasFIA)){

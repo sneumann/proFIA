@@ -4,7 +4,7 @@
 \name{plotRaw,proFIAset-method}
 \alias{plotRaw,proFIAset-method}
 \alias{plotRaw}
-\title{plotting of raw data}
+\title{Plotting of raw data}
 \usage{
 \S4method{plotRaw}{proFIAset}(object, type = c("raw", "peaks"),
   sample = NULL, ...)
@@ -27,7 +27,7 @@ No value is returned.
 Plot the raw data from a proFIAset object,the
 the type of plot determines if the full raw data
 needs to be plotted or only the data conressponding to
-the detected peaks needs to be plottes. The paht in the classes
+the detected peaks needs to be plottes. The path in the classes
 table of the proFIAset object needs to be correct.
 }
 \examples{

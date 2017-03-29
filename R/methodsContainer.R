@@ -1,12 +1,11 @@
-#' Create a table containg the classes of the acquisition.
+#' Ge the class organization of directory.
 #'
-#' Find the classes oganization of a directory, and return a
+#' Find the classes organization of a directory, and return a
 #' table. This function is called by proFIAset, and is useful
-#' to check the structure which will be stored in the proFIAset
-#' object.
+#' to check the structure which will be considered by a proFIAset object.
 #'
 #' @export
-#' @param files The path to the experiment.
+#' @param files The path to the experiment directory/
 #' @return a table containing two columns, the absolute paths
 #' of the files and the classes of the acquisition, as given by
 #' subdirectories.
@@ -57,8 +56,6 @@ acquisitionDirectory <- function(files = NULL) {
         paste(basename(allgroup), collapse = " "),
         "\n"
     )
-    ##Making absolute data.frame
-    #lg <- file.path(getwd(),lg)
     df <- data.frame(
     	rname <- as.character(lg),
     	group <- as.factor(basename(groupf)),
@@ -206,7 +203,8 @@ setMethod("injectionPeaks", "proFIAset", function(object) {
 #' Process FIA experiment.
 #'
 #' Processes an experiment ordered as a tree of files, and return a
-#' proFIAset object.
+#' proFIAset object. TO check the funirshed structure you may use the 
+#' \code{\link{acquisitionDirectory}} function.
 #' @export
 #'
 #' @param path The path of the files to be processed.
@@ -228,11 +226,12 @@ setMethod("injectionPeaks", "proFIAset", function(object) {
 #'
 #' #Parameters are defined.
 #' ppm<-2
-#' parallel<-FALSE
 #'
-#' plasSet<-proFIAset(pathplas,ppm=ppm,parallel=parallel)
+#' plasSet<-proFIAset(pathplas,ppm=ppm,parallel=FALSE)
 #' plasSet
-#'
+#' 
+#' ###An example using parallelism with a snow cluster using BiocParallel package.
+#' \dontrun{plasSet<-proFIAset(pathplas,ppm=ppm,parallel=TRUE,BPPARAM=bpparam("SnowParam"))}
 #' }
 proFIAset <-
     function(path,
@@ -434,7 +433,6 @@ switchSummaryPeak<-function(x){
 #' 
 #' @export
 #' @param x A proFIAset object.
-#' @param y Unused at the moment.
 #' @param type Shall the plotting be done by sample or by class for the barplot ?
 #' 
 #' @aliases plot.FIA
@@ -456,11 +454,12 @@ switchSummaryPeak<-function(x){
 #' 
 #' }
 #' @rdname plot
-setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","class")){
+setMethod("plot", signature(x = "proFIAset"),plot <- function(x, type=c("sample","class")){
+	
 	vstep <- 0
 	title_pca <- NULL
 	vomar <- par("mar")
-	par(mar=c(3.1,2.1,2.1,1.6))
+	par(mar=c(3.1,2.1,2.1,1.1), font = 2, font.axis = 2, font.lab = 2)
 	if(x@step=="Peak_extracted"){
 		layout(matrix(1:2,ncol=2))
 		vstep <- 1
@@ -472,12 +471,12 @@ setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","
 	if(x@step %in% ("Matrix_created")){
 		layout(matrix(c(1,1,1,1,2,4,3,4),ncol=2,byrow=TRUE))
 		vstep <- 4
-		title_pca <- "PCA without imputation"
+		title_pca <- "PCA (non-imputed data set)"
 	}
 	if(x@step=="Fillpeaks"){
 		layout(matrix(c(1,1,1,1,2,4,3,4),ncol=2,byrow=TRUE))
 		vstep <- 4
-		title_pca <- "PCA after imputation"
+		title_pca <- "PCA (imputed data set)"
 	}
 	
 	### Barplot of the number of peaks found.
@@ -505,26 +504,51 @@ setMethod("plot", signature(x = "proFIAset"),function(x,y=NULL,type=c("sample","
 		rownames(valHeight) <- unique(as.character(x@classes[,2]))
 	}
 	omar <- par("mar")
-	par(mar=c(6.1,4.1,4.1,2.1))
-	barplot(t(valHeight),legend=colnames(valHeight),col=c("darkblue","red","yellow"),
-			ylab="Number of peaks",main="Number of peaks",
-			ylim=c(0,max(maxy)*1.25),las=2)
+	par(mar=c(4.1,2.6,3.1,0.1))
+	barVn <- barplot(t(valHeight),
+					 ## legend=colnames(valHeight),
+					 names.arg = rep("", nrow(valHeight)),
+					 col=c("red","blue","green4"),
+					 ## ylab="Number of peaks",
+					 ## main="Number of peaks",
+					 ## ylim=c(0,max(maxy)*1.25),
+					 las = 3)
+	mtext(substr(rownames(valHeight), 1, 10), side = 1, at = barVn, las = 2, cex = 0.6)
+	mtext("Quality of feature flowgrams (in each sample)",
+		  line = 1.7,
+		  font = 2, col = "black", cex = 0.9)
+	mtext("Well behaved",
+		  line = 0.2,
+		  at = par("usr")[1] + 0.2 * diff(par("usr")[1:2]), col = "green4", cex = 0.8)
+	mtext("Shifted",
+		  line = 0.2,
+		  at = par("usr")[1] + 0.4 * diff(par("usr")[1:2]), col = "blue", cex = 0.8)
+	mtext("Significant Matrix Effect",
+		  line = 0.2,
+		  at = par("usr")[1] + 0.7 * diff(par("usr")[1:2]), col = "red", cex = 0.8)
+	
 	par(mar=omar)
 	
 	###the injection peaks are plotted.
-	plotModelFlowgrams(x)
+	plotSamplePeaks(x, diagPlotL = TRUE)
 	
 	if(vstep<2) return(invisible(NA))
 	
-	plot(density(x@group[,"mzMed"],bw=5),col="red",xlab="m/z",
-		 ylab="Density of features",main="Density of the m/z of found features",lwd=2)
+	omar <- par("mar")
+	par(mar=c(3.1,2.6,2.1,1.1))
+	plot(density(x@group[,"mzMed"],bw=5),col="red",xlab="",
+		 ## ylab="Density of features",
+		 main="Density of m/z features",lwd=2)
+	mtext("m/z", side = 1, line = 2, cex = 0.7)
+	par(mar = omar)
 	
 	if(vstep<3) return(invisible(NA))
+	
 	tempMatrix <- t(x@dataMatrix)
 	tempMatrix[which(is.na(tempMatrix))] <- 0
 	res_pca <- suppressMessages(opls(tempMatrix,plotL=FALSE,predI=2,log10L=TRUE,crossvalI=min(7,nrow(tempMatrix)-1)))
 	plot(res_pca,type="x-score",parAsColFcVn=x@classes[,2],parTitleL=FALSE,parDevNewL=FALSE)
-	title(title_pca)
+	title(title_pca, line = 2.5)
 	par(mar=vomar)
 	return(invisible(NA))
 })
@@ -545,14 +569,13 @@ setGeneric("group.FIA", function(object, ...)
 #' @param ppmGroup A ppm parameter giving the size of the windows
 #' considered, we recommend to use 0.5*ppm where ppm is the pp parameter
 #' of band detection in the \code{\link{proFIAset}} function.
-#' @param nPoints the number of points used on the density, this parameter
-#' only needs to be changed if the number of group found seems small.
 #' @param sleep If not 0 densities are plotted every \code{sleep} ms.
-#' @param dmz A minimum mz value for the mz density of grouping.
+#' @param dmz A minimum mz deviation value which can be considered over the deviation in ppm
+#' if it is higher. This account for low mass deviation.
 #' @param fracGroup The minimum fraction of samples of a class required to make
 #' a group.
-#' @param solvar Shall the group corresponding to solvent signal be kept.
-#' Default is no.
+#' @param solvar Shall the group corresponding to solvent signal be kept. This in only useful if solvent
+#' signal have been conserved in the \code{\link{findFIASignal}} function.
 #' @return A proFIAset object with the \code{group} slot filled. See \code{\link{proFIAset-class}}.
 #' @aliases group.FIA group.FIA,proFIAset-method
 #' @examples
@@ -570,7 +593,6 @@ setGeneric("group.FIA", function(object, ...)
 setMethod("group.FIA", "proFIAset", function(object,
                                              ppmGroup,
                                              solvar = FALSE,
-                                             nPoints = 1024,
                                              sleep = 0,
 											 dmz=0.0005,
                                              fracGroup = 0.5) {
@@ -586,6 +608,7 @@ setMethod("group.FIA", "proFIAset", function(object,
     uclasses <- NULL
     lty_vec <- NULL
     lwd_vec <- NULL
+    nPoints <- 1024
     mzrange <- range(peaksL[, "mz"])
     #1500 is thet maximum mass of a metabolite. 1024 the number of points used in the density
     inter <- mzrange[2] * ppmGroup * nPoints / (20 * 10 ^ 6)
@@ -860,7 +883,9 @@ setGeneric("makeDataMatrix", function(object, ...)
     standardGeneric("makeDataMatrix"))
 #' Construct the data matrix of a proFIAset object.
 #'
-#' Construct the data matrix of a proFIA set object.
+#' Construct the data matrix of a proFIA set object, using the selected measure for the intensity,
+#' area or maximum intensity. The choice of area or maximum intensity depends of your acquisition,
+#' and your preferences.
 #' @export
 #' @param object A \code{\link{proFIAset}} object.
 #' @param maxo Shall the intensity used to the area or the maximum
@@ -940,15 +965,20 @@ setGeneric("findMzGroup", function(object, ...)
 #' find a group in a FIA experiment.
 #'
 #' Find a group corresponding to the given mass in a proFIAset
-#' object.
+#' object, given a tolerance in ppm.The mz considered for a group
+#' is the median fo the grouped signals between the various acquisition.
 #' @export
 #' @param object A proFIAset object.
 #' @param mz A numeric vector of masses to be looked for.
 #' @param tol The tolerance in ppm.
+#' @param dmz The minimum tolerance in absolute mz compared to the tolerance in ppm.
+#' @param closest Shall only the closest group be returned.
 #' @return A vector of integer of the same length than mz giving the row
 #' of the found group in the object group slot, or NA if the group is
 #' not found.
 #' @aliases findMzGroup findMzGroup,proFIAset-method
+#' @return If closest is FALSE a list giving the index of the found group, if closest is TRUE a vector
+#' giving the position. NA indicates that the mass signal have not bene found.
 #' @seealso  You can visualize the group using \code{\link{plotFlowgrams}} function.
 #' @examples
 #' if(require("plasFIA")){
@@ -960,116 +990,41 @@ setGeneric("findMzGroup", function(object, ...)
 #'
 #' #Mass to search and toolerance are defined
 #' mass<-plasMols[22,"mass_M+H"]
-#' tolppm<-1
+#' tolppm <- 1
 #'
-#' plasSet=makeDataMatrix(plasSet)
+#' plasSet<- makeDataMatrix(plasSet)
 #'
-#' index=findMzGroup(plasSet,mass,tol=1)
-#' plasSet
+#' index <- findMzGroup(plasSet,mass,tol=tolppm)
+#' 
+#' plasMols[22,]
+#' #We extract the corresponding group.
+#' groupMatrix(plasSet)[index,]
 #' }
-
-setMethod("findMzGroup", "proFIAset", function(object, mz, tol = 0) {
+setMethod("findMzGroup", "proFIAset", function(object, mz, tol,dmz = 0.005, closest = TRUE) {
     if(nrow(object@group)==0) stop("group needs to be created before using findMzGroup. See ?group.FIA.")
-    vecRes <- rep(NA, length(mz))
+	
+    vecRes <- vector(mode="list",length=length(mz))
+    
+    vectol <- tol*1e-6*object@group[,"mzMed"]
+    vectol <- ifelse(vectol < dmz, dmz, vectol)
+    bmin <- object@group[,"mzMed"]-vectol
+    bmax <- object@group[,"mzMed"]+vectol  
     for (i in 1:length(vecRes)) {
-        pos <- which(object@group[, "mzMin"] * (1 - tol * 1e-6) <= mz[i] &
-                        object@group[, "mzMax"] * (1 + tol * 1e-6) >= mz[i])
-        if (length(pos) > 1) {
+        pos <- which(bmin <= mz[i] &
+        			 	bmax >= mz[i])
+        if (length(pos) > 1 & closest) {
             best <- which.min(abs(object@group[pos, "mzMed"] - mz[i]) / mz[i])
             pos <- pos[best]
         }
         ##Checking if the found group got his med mz close to the peak.
 
-        if (length(pos) == 0 | is.null(pos)) {
-            vecRes[i] = NA
-        } else{
-            if (1e6 * abs(object@group[pos, "mzMed"] - mz[i]) / mz[i] > tol &
-                tol > 0) {
-                vecRes[i] = NA
-            } else{
-                vecRes[i] = pos
-            }
-        }
-
+        if (length(pos) == 0 | is.null(pos)) pos <- NA
+        	
+       vecRes[[i]] <- pos
     }
+    if(closest) vecRes <- unlist(vecRes)
     vecRes
 })
-
-
-## setGeneric("fillPeaks.WKNN", function(object, ...)
-##     standardGeneric("fillPeaks.WKNN"))
-## ## Fill missing values in the peak table.
-## ##
-## ## Impute the missing values in an FIA experiment using a Weighted
-## ## K-Nearest Neighbours.
-## ## @param object A proFIAset object.
-## ## @param k The number of neighbors considered.
-## ## @return A proFIAset object with the missing values imputated.
-## ## @aliases fillPeaks.WKNN fillPeaks.WKNN,proFIAset-method
-## ## @examples
-## ## if(require(plasFIA)){
-## ##     data(plasSet)
-## ##
-## ##     ###Reinitializing the data matrix
-## ##     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
-## ##     plasSet<-fillPeaks.WKNN(plasSet,2)
-## ## ## }
-## setMethod("fillPeaks.WKNN", "proFIAset", function(object, k = 5) {
-##     if(object@step=="Fillpeaks"){
-##         stop("You should not perform fillPeaks on a matrix which have already been filled. Use makeDataMatrix again.")
-##     }
-##
-##     if(object@step != "Matrix_created"){
-##         stop("Impossible to perform fillPeaks without data matrix, see ?makeDataMatrix.")
-##     }
-##
-##     if(k==1){
-##         warning("It is strongly discouraged to do 1-nearest neighbour.")
-##     }
-## 	###WE DO THE WKNN ON THE VARIABLE.
-##     mdataMatrix <- dataMatrix(object)
-##     counterror <- 0
-##     cdat <- mdataMatrix
-##     ###We first rescale the data
-##     mdataMatrix <- t(apply(mdataMatrix,1,function(x){
-##     	x/max(max(x),1)
-##     }))
-##
-##     knntab <- get.knn(mdataMatrix, k = min(k * 5, floor(nrow(mdataMatrix) / 2))) ###Supposition that there is less than 50% missing values.
-##     ###For each varaible getting the concerned element
-##     matcoef <- knntab$nn.dist
-##
-##     ###Handling the case where the signal is never found.
-##     matcoef <- matcoef / apply(matcoef, 1, function(x) {
-##         if (any(x != 0)) {
-##             return(sum(x))
-##         } else{
-##             return(1)
-##         }
-##     })
-##
-##     for (j in 1:ncol(mdataMatrix)) {
-##         pok <- which(mdataMatrix[, j] != 0)
-##         pos0 <- (1:nrow(mdataMatrix))[-pok]
-##         for (i in pos0) {
-##             toUse <- which(knntab$nn.index[i,] %in% pok)
-##             if (length(toUse) <= 1){
-##                 counterror <- counterror + 1
-##                 next
-##             }
-##             toUse <- toUse[1:min(k, length(toUse))]
-##             ncoef <- 1-matcoef[i, toUse] / max(matcoef[i, toUse])
-##             toUse <- knntab$nn.index[i,toUse]
-##             nvalue <- sum(ncoef * mdataMatrix[toUse, j])
-##             cdat[i, j] <- nvalue
-##         }
-##     }
-##     if (counterror > 1)
-##         message(paste(counterror, "variables could not be imputated."))
-##     object@dataMatrix <- cdat
-##     object@step <- "Fillpeaks"
-##     object
-## })
 
 
 setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
@@ -1087,6 +1042,8 @@ setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
 #' are taken separately, if 'unique', the imputation is done on the full data matrix.
 #' @return A proFIAset object with the missing values imputated.
 #' @aliases imputeMissingValues.WKNN_TN imputeMissingValues.WKNN_TN,proFIAset-method
+#' @references Distribution based nearest neighbor imputation for truncated high dimensional data with applications to pre-clinical and
+#'clinical metabolomics studies, J.S Shah 2017, BMC Bioinformatics.
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasSet)
@@ -1149,7 +1106,7 @@ setGeneric("peaksGroup", function(object, ...)
     standardGeneric("peaksGroup"))
 #' Return the peaks corresponding to a group.
 #'
-#' Return the peaks corresponding ot a gorup given by his index.
+#' Return the peaks corresponding ot a group given by his index.
 #' @export
 #' @param object A proFIAset object.
 #' @param index A numeric vector r giving the group to be returned. NA are ignored.
@@ -1161,7 +1118,7 @@ setGeneric("peaksGroup", function(object, ...)
 #'     data(plasMols)
 #'
 #'     #finding the molecules of plasMols
-#'     vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"])
+#'     vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"],tol=5)
 #'
 #'     mol_peaks<-peaksGroup(plasSet,index=vmatch)
 #'     head(mol_peaks)
@@ -1371,7 +1328,9 @@ setGeneric("plotFlowgrams", function(object, ...)
 #'
 #' Plot raw temporal profiles from \code{\link{proFIAset}} object
 #' corresponding to one or more molecules. The function will priorize
-#' index, only using mz if index is set to \code{NULL}.
+#' index, only using mz if index is set to \code{NULL}. As this require to come
+#' back to the raw data, this can take some times, an we don't recommend using it
+#' on more than 30 files. It is better to choose 30 files in the proFIAset object.
 #'
 #' @export
 #' @param object A proFIAset object.
@@ -1413,7 +1372,7 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     if (is.null(index)) {
         if (is.null(mz))
             stop("Index or mz need to be provided")
-        index <- sapply(mz, findMzGroup, object = object)
+        index <- sapply(mz, findMzGroup, object = object, tol = ppm)
     }
     if(!is.null(title)){
     if(length(title)!=length(index)){
@@ -1527,32 +1486,33 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     }
 })
 
-setGeneric("plotModelFlowgrams", function(object, ...)
-    standardGeneric("plotModelFlowgrams"))
-#' Plot the model flowgrams of a proFIAset object.
+setGeneric("plotSamplePeaks", function(object, ...)
+    standardGeneric("plotSamplePeaks"))
+#' Plot the sample peak of a proFIAset object.
 #'
-#' Plot the model flowgrams evaluated on each raw files
-#' of a proFIAset object one plot. If a peak is really
-#' different from the other it can indicater an error in
-#' the injection process.
+#' Plot the sample peaks determined by regression for each sample.
+#' If you want to check the various regression performed by
+#' \emph{proFIA} in an individual sample we recommend you to use the
+#' \code{\link{getInjectionPeak}}. A sample peak highly different form the 
+#' other may indicate a problem of the regression process, or an injection issue
+#' in the acquisition.
 #'
 #' @export
 #' @param object A proFIAset object.
 #' @param subsample The subset of sample on which the sample may be plotted.
 #' If it is numeric it will be viewed as sample row in the classes table,
 #' if it is a character it will be viewed as a factor.
-#' @param diagPlotL Boolean used by the plot function.
+#' @param diagPlotL Boolean used by the usmmary plot function. Keep to FALSE in the general case.
 #' @param ... SUpplementary arguments which will be passed to the \link{lines}
 #' function.
-#' @aliases plotModelFlowgrams plotModelFlowgrams,proFIAset-method
+#' @aliases plotSamplePeaks plotSamplePeaks,proFIAset-method
 #' @return No value returned.
 #' @examples
 #' if(require(plasFIA)){
 #'     data(plasSet)
-#'     plotModelFlowgrams(plasSet)
+#'     plotSamplePeaks(plasSet)
 #' }
-setMethod("plotModelFlowgrams", "proFIAset", function(object, subsample =
-                                                          NULL, diagPlotL = FALSE, ...) {
+setMethod("plotSamplePeaks", "proFIAset", function(object, subsample = NULL, diagPlotL = FALSE, ...) {
 	if (is.null(subsample)) {
 		subsample <- 1:nrow(object@classes)
 	} else if (is.character(subsample)) {
@@ -1574,7 +1534,7 @@ setMethod("plotModelFlowgrams", "proFIAset", function(object, subsample =
 	colvec <- makeSeparateColors(object@classes[subsample, 2])
 	vleg <- table(object@classes[subsample, 2])
 	## mtitle <- "Sample Injection Peaks"
-	mtitle <- "Flowgrams for peak modeling"
+	mtitle <- "Sample peak models"
 	vcol <- NULL
 	if (length(vleg) == 1) {
 		## mtitle <- paste(mtitle, "class", object@classes[subsample[1], 2])
@@ -1588,16 +1548,18 @@ setMethod("plotModelFlowgrams", "proFIAset", function(object, subsample =
 		omar <- par("mar")
 		par(mar=c(2.6,2.6,2.1,1.1))
 	}
+	###To be usre to get the good plot.
 	plot(
-		NULL,
+		1:2,
 		## xlab = "Time (s)",
 		## ylab = "Injection Peak",
 		main = mtitle,
 		xlim = rangex,
-		ylim = c(0, 1)
+		ylim = c(0, 1),
+		type="n"
 	)
 	if(diagPlotL) {
-		par(mar = omar)    
+		par(mar = omar)
 	}
 	mtext("Time (s)", side = 1, line = 2.5, cex = 0.7)
 	## mtext(mtitle, line = 1, cex = 0.8)
@@ -1671,7 +1633,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @param fracGroup The fraction of smaple form a class necessary to make a group.
 #' @param ppmGroup A ppm tolerance to group signals between samples \code{\link{group.FIA}}.
 #' @param parallel A boolean indicating if parallelism is supposed to be used.
-#' @param bpparam A BoicParallelParam object to be passed i BiocParallel is used.
+#' @param bpparam A BiocParallelParam object to be passed i BiocParallel is used.
 #' @param noiseEstimation A boolean indicating in noise need to be estimated.
 #' @param SNT A value giving the SNT thrshold, used only if \code{noiseEstimation} is FALSE.
 #' @param maxo Should the maximum intensity be used over the peak area.
@@ -1968,12 +1930,12 @@ plotVoidRaw <-
 # setGeneric("plotRaw", function(object, ...)
 #     standardGeneric("plotRaw"))
 
-#' plotting of raw data
+#' Plotting of raw data
 #'
 #'Plot the raw data from a proFIAset object,the
 #'the type of plot determines if the full raw data
 #'needs to be plotted or only the data conressponding to
-#'the detected peaks needs to be plottes. The paht in the classes
+#'the detected peaks needs to be plottes. The path in the classes
 #'table of the proFIAset object needs to be correct.
 #'
 #' @export

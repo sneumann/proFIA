@@ -35,3 +35,7 @@ if(require(plasFIA)){
     plasSet<-imputeMissingValues.WKNN_TN(plasSet,2)
 }
 }
+\references{
+Distribution based nearest neighbor imputation for truncated high dimensional data with applications to pre-clinical and
+clinical metabolomics studies, J.S Shah 2017, BMC Bioinformatics.
+}

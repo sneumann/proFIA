@@ -29,7 +29,8 @@ A proFIAset object.
 }
 \description{
 Processes an experiment ordered as a tree of files, and return a
-proFIAset object.
+proFIAset object. TO check the funirshed structure you may use the 
+\code{\link{acquisitionDirectory}} function.
 }
 \examples{
 if(require("plasFIA")){
@@ -38,11 +39,12 @@ pathplas<-system.file(package="plasFIA","mzML")
 
 #Parameters are defined.
 ppm<-2
-parallel<-FALSE
 
-plasSet<-proFIAset(pathplas,ppm=ppm,parallel=parallel)
+plasSet<-proFIAset(pathplas,ppm=ppm,parallel=FALSE)
 plasSet
 
+###An example using parallelism with a snow cluster using BiocParallel package.
+\dontrun{plasSet<-proFIAset(pathplas,ppm=ppm,parallel=TRUE,BPPARAM=bpparam("SnowParam"))}
 }
 }
 \seealso{

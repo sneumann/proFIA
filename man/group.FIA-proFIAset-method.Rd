@@ -6,8 +6,8 @@
 \alias{group.FIA}
 \title{Group the peaks of an FIA acquisition.}
 \usage{
-\S4method{group.FIA}{proFIAset}(object, ppmGroup, solvar = FALSE,
-  nPoints = 1024, sleep = 0, dmz = 5e-04, fracGroup = 0.5)
+\S4method{group.FIA}{proFIAset}(object, ppmGroup, solvar = FALSE, sleep = 0,
+  dmz = 5e-04, fracGroup = 0.5)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -16,15 +16,13 @@
 considered, we recommend to use 0.5*ppm where ppm is the pp parameter
 of band detection in the \code{\link{proFIAset}} function.}
 
-\item{solvar}{Shall the group corresponding to solvent signal be kept.
-Default is no.}
-
-\item{nPoints}{the number of points used on the density, this parameter
-only needs to be changed if the number of group found seems small.}
+\item{solvar}{Shall the group corresponding to solvent signal be kept. This in only useful if solvent
+signal have been conserved in the \code{\link{findFIASignal}} function.}
 
 \item{sleep}{If not 0 densities are plotted every \code{sleep} ms.}
 
-\item{dmz}{A minimum mz value for the mz density of grouping.}
+\item{dmz}{A minimum mz deviation value which can be considered over the deviation in ppm
+if it is higher. This account for low mass deviation.}
 
 \item{fracGroup}{The minimum fraction of samples of a class required to make
 a group.}

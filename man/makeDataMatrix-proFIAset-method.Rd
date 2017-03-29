@@ -18,7 +18,9 @@ intensity}
 A proFIAset object with the \code{dataMatrix} slot filled.
 }
 \description{
-Construct the data matrix of a proFIA set object.
+Construct the data matrix of a proFIA set object, using the selected measure for the intensity,
+area or maximum intensity. The choice of area or maximum intensity depends of your acquisition,
+and your preferences.
 }
 \examples{
 if(require("plasFIA")){

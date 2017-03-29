@@ -6,7 +6,8 @@
 \alias{findMzGroup}
 \title{find a group in a FIA experiment.}
 \usage{
-\S4method{findMzGroup}{proFIAset}(object, mz, tol = 0)
+\S4method{findMzGroup}{proFIAset}(object, mz, tol, dmz = 0.005,
+  closest = TRUE)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -14,15 +15,23 @@
 \item{mz}{A numeric vector of masses to be looked for.}
 
 \item{tol}{The tolerance in ppm.}
+
+\item{dmz}{The minimum tolerance in absolute mz compared to the tolerance in ppm.}
+
+\item{closest}{Shall only the closest group be returned.}
 }
 \value{
 A vector of integer of the same length than mz giving the row
 of the found group in the object group slot, or NA if the group is
 not found.
+
+If closest is FALSE a list giving the index of the found group, if closest is TRUE a vector
+giving the position. NA indicates that the mass signal have not bene found.
 }
 \description{
 Find a group corresponding to the given mass in a proFIAset
-object.
+object, given a tolerance in ppm.The mz considered for a group
+is the median fo the grouped signals between the various acquisition.
 }
 \examples{
 if(require("plasFIA")){
@@ -34,12 +43,15 @@ data(plasMols)
 
 #Mass to search and toolerance are defined
 mass<-plasMols[22,"mass_M+H"]
-tolppm<-1
+tolppm <- 1
 
-plasSet=makeDataMatrix(plasSet)
+plasSet<- makeDataMatrix(plasSet)
 
-index=findMzGroup(plasSet,mass,tol=1)
-plasSet
+index <- findMzGroup(plasSet,mass,tol=tolppm)
+
+plasMols[22,]
+#We extract the corresponding group.
+groupMatrix(plasSet)[index,]
 }
 }
 \seealso{

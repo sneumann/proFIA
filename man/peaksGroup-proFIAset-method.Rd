@@ -17,7 +17,7 @@
 The peaks in the given group, see \code{\link{proFIAset-class}}.
 }
 \description{
-Return the peaks corresponding ot a gorup given by his index.
+Return the peaks corresponding ot a group given by his index.
 }
 \examples{
 if(require(plasFIA)){
@@ -25,7 +25,7 @@ if(require(plasFIA)){
     data(plasMols)
 
     #finding the molecules of plasMols
-    vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"])
+    vmatch<-findMzGroup(plasSet,mz=plasMols[,"mass_M+H"],tol=5)
 
     mol_peaks<-peaksGroup(plasSet,index=vmatch)
     head(mol_peaks)

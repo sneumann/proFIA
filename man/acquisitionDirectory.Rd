@@ -2,12 +2,12 @@
 % Please edit documentation in R/methodsContainer.R
 \name{acquisitionDirectory}
 \alias{acquisitionDirectory}
-\title{Create a table containg the classes of the acquisition.}
+\title{Ge the class organization of directory.}
 \usage{
 acquisitionDirectory(files = NULL)
 }
 \arguments{
-\item{files}{The path to the experiment.}
+\item{files}{The path to the experiment directory/}
 }
 \value{
 a table containing two columns, the absolute paths
@@ -15,10 +15,9 @@ of the files and the classes of the acquisition, as given by
 subdirectories.
 }
 \description{
-Find the classes oganization of a directory, and return a
+Find the classes organization of a directory, and return a
 table. This function is called by proFIAset, and is useful
-to check the structure which will be stored in the proFIAset
-object.
+to check the structure which will be considered by a proFIAset object.
 }
 \examples{
 if(require(plasFIA)){

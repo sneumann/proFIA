@@ -19,7 +19,7 @@ analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
 
 \item{parallel}{A boolean indicating if parallelism is supposed to be used.}
 
-\item{bpparam}{A BoicParallelParam object to be passed i BiocParallel is used.}
+\item{bpparam}{A BiocParallelParam object to be passed i BiocParallel is used.}
 
 \item{noiseEstimation}{A boolean indicating in noise need to be estimated.}
 

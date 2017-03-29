@@ -6,12 +6,10 @@
 \alias{plot.FIA}
 \title{Plot a summary of an FIA experiment.}
 \usage{
-\S4method{plot}{proFIAset,ANY}(x, y = NULL, type = c("sample", "class"))
+\S4method{plot}{proFIAset,ANY}(x, type = c("sample", "class"))
 }
 \arguments{
 \item{x}{A proFIAset object.}
-
-\item{y}{Unused at the moment.}
 
 \item{type}{Shall the plotting be done by sample or by class for the barplot ?}
 }

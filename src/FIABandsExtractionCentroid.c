@@ -12,7 +12,7 @@ and then to rely line by lines all those peaks
 #define MULTIPLIER_NUM_SCAN 1.5
 #define DEBUGGING 0
 #define MAX_BAND 8
-#define NUM_EXCEPT 3
+#define NUM_EXCEPT 10
 
 
 //V2 now only the peaks are supposed to be pushed in.

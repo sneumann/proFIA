@@ -5,7 +5,7 @@ author: "Alexis Delabriere and Etienne Thevenot"
 date: "`r Sys.Date()`"
 
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{processing FIA-HRMS data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: "proFIA-vignette.bib"
@@ -27,7 +27,7 @@ bioconductor package provides the first workflow to process FIA-HRMS raw data
 and generate the peak table. By taking into account the high resolution and the
 information of matrix effect available from multiple scans, the algorithms are
 robust and provide maximum information about ions m/z and intensitie using the 
-full capapbility of modern mass spectrometers.
+full capability of modern mass spectrometers.
 
 # Workflow
 
@@ -37,8 +37,7 @@ The first step generates the `proFIAset` object, which will be further processed
 during the workflow. The object contains initial information about the sample
 and the classes (when subdirectories for the raw data are present), as well as
 all results froom the processing (e.g., detected peaks, grouping, etc.).  At
-each step, the data quality can be checked by graphics such as `plotEICs`, or
-`plotRaw`. For convenience, the 3 processing functions and methods from the
+each step, the data quality can be checked by a grphical overview using the `plot` function. For convenience, the 3 processing functions and methods from the
 workflow (`proFIAset`, `group.FIA`, and `imputeMissingValues.WKNN_T`) have been wrapped into
 a single `analyzeAcquisitionFIA` function. The final *dataMatrix* can be
 exported, as well as the 2 supplementary tables containing the *sampleMetadata*
@@ -128,7 +127,7 @@ these reconstructed filters.
 
 ```{r plot_injection}
 # plotting the injection peak
-plotModelFlowgrams(plasSet)
+plotSamplePeaks(plasSet)
 ```
 
 ## Peak grouping with `group.FIA`
@@ -239,6 +238,10 @@ k <- 3
 
 # running the whole workflow in a single step
 plasSet <- analyzeAcquisitionFIA(path, ppm=ppm, ppmGroup=ppmgroup, k=k,fracGroup = fracGroup,parallel=FALSE)
+
+# Running the wholoe workflow in a single step, using parallelism
+# with the BiocParallel package
+plasSet <- analyzeAcquisitionFIA(path, ppm=ppm, ppmGroup=ppmgroup, k=k,fracGroup = fracGroup,parallel=TRUE)
 
 ```
 
