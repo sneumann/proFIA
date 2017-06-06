@@ -6,7 +6,8 @@
 \usage{
 analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
   parallel = FALSE, bpparam = NULL, noiseEstimation = TRUE, SNT = NULL,
-  maxo = FALSE, k = NULL)
+  maxo = FALSE, imputation = c("randomForest", "KNN_TN", "None"),
+  k = NULL)
 }
 \arguments{
 \item{path}{The path to the directory of acquistion.}
@@ -27,7 +28,9 @@ analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
 
 \item{maxo}{Should the maximum intensity be used over the peak area.}
 
-\item{k}{The number of neighbors for \code{\link{imputeMissingValues.WKNN_TN}}.}
+\item{imputation}{The method to use for imputation randomForest or WKNN_TN.Put None if  no imputation should be done.}
+
+\item{k}{The number of neighbors for \code{\link{impute.KNN_TN}}, if imputation==KNN_TN}
 }
 \value{
 A filled proFIAset object ready for exportation.
@@ -38,7 +41,7 @@ Perform the 4 steps pro fia workflow including :
  \item noise estimation. Noise is estimated.
  \item bands filtering. Bands are filtered using the \code{\link{findFIASignal}} function.
  \item peak grouping. Signals from different acquisition are grouped using \code{\link{group.FIA}} function.
- \item missing values imputations. Missing values are imputated using \code{\link{imputeMissingValues.WKNN_TN}} function.
+ \item missing values imputations. Missing values are imputated using \code{\link{impute.KNN_TN}} function.
 }
 Minimal options to launch the workflow are provided, neithertheless if finer option tuning are
 necessary, launching the workflow function by function is strongly advised.

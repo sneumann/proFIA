@@ -11,8 +11,6 @@
 #'
 #' @docType package
 #' @importFrom minpack.lm nls.lm nls.lm.control
-#' @importFrom FNN get.knn
-#' @importFrom maxLik maxLik
 #' @importFrom pracma pinv
 #' @importFrom grDevices colorRampPalette rainbow as.raster col2rgb rgb
 #' @importFrom graphics abline legend lines matplot plot title barplot par
@@ -26,6 +24,7 @@
 #' @importFrom Biobase AnnotatedDataFrame ExpressionSet
 #' @importFrom BiocParallel bplapply bpparam
 #' @importFrom ropls opls
+#' @importFrom missForest missForest
 #' @importMethodsFrom ropls plot
 #' @name proFIA-package
 #' @aliases proFIA proFIA-package

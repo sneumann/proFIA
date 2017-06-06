@@ -2,13 +2,13 @@ Package: proFIA
 Type: Package
 Title: Preprocessing of FIA-HRMS data
 Version: 1.3.0
-Date: 2016-05-04
+Date: 2016-06-06
 Author: Alexis Delabriere and Etienne Thevenot.
 Maintainer: Alexis Delabriere <alexis.delabriere@cea.fr>
 biocViews: MassSpectrometry, Metabolomics, Lipidomics, Preprocessing,
     PeakDetection, Proteomics
 Depends:
-    R (>= 3.3.0),
+    R (>= 2.5.0),
     xcms
 Imports:
     stats,
@@ -17,11 +17,10 @@ Imports:
     grDevices,
     methods,
     pracma,
-    maxLik,
     Biobase,
-    FNN,
     minpack.lm,
     BiocParallel,
+    missForest,
     ropls
 Suggests:
     BiocGenerics,

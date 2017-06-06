@@ -620,7 +620,7 @@ findFIASignal <-
 				# if (peaklim[2] > sizepeak[2] &
 				# 	abs(posMax - sizepeak[2]) < abs(posMax - sizepeak[3]) &
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
-				if ((mean(peaklim[1:2])>mean(sizepeak[1:2]))&(!extendedFilter)) {
+				if (abs(posMax-sizepeak[3])>abs((posMax-sizepeak[2])*2)&(!extendedFilter)) {
 					bshifted <- 1
 				}
 			} else if (QC == "Nes") {
@@ -642,11 +642,9 @@ findFIASignal <-
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
 				# 	bshifted <- 1
 				# }
-				if ((mean(peaklim)>mean(sizepeak[1:2])*1.1)&(!extendedFilter)) {
+				if (abs(posMax-sizepeak[3])>abs((posMax-sizepeak[2])*1.1)&(!extendedFilter)) {
 					bshifted <- 1
 				}
-				
-				
 			}else if(QC=="Snt"){
 				if (SNTval < SNT)
 					next

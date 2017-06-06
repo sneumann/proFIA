@@ -1027,9 +1027,9 @@ setMethod("findMzGroup", "proFIAset", function(object, mz, tol,dmz = 0.005, clos
 })
 
 
-setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
-	standardGeneric("imputeMissingValues.WKNN_TN"))
-#' Fill missing values in the peak table.
+setGeneric("impute.KNN_TN", function(object, ...)
+	standardGeneric("impute.KNN_TN"))
+#' Fill missing values in the peak table using K-nearest Neighbour for tuncated distributions.
 #'
 #' Impute the missing values in an FIA experiment using a Weighted
 #' K-Nearest Neighbours on Truncated Distribution described by Jasmit S. Shah et al.
@@ -1041,7 +1041,7 @@ setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
 #' @param classes how to handle imputation for different classes, if 'split', the classes
 #' are taken separately, if 'unique', the imputation is done on the full data matrix.
 #' @return A proFIAset object with the missing values imputated.
-#' @aliases imputeMissingValues.WKNN_TN imputeMissingValues.WKNN_TN,proFIAset-method
+#' @aliases impute.KNN_TN impute.KNN_TN,proFIAset-method
 #' @references Distribution based nearest neighbor imputation for truncated high dimensional data with applications to pre-clinical and
 #'clinical metabolomics studies, J.S Shah 2017, BMC Bioinformatics.
 #' @examples
@@ -1050,11 +1050,11 @@ setGeneric("imputeMissingValues.WKNN_TN", function(object, ...)
 #'
 #'     ###Reinitializing the data matrix
 #'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
-#'     plasSet<-imputeMissingValues.WKNN_TN(plasSet,2)
+#'     plasSet<-impute.KNN_TN(plasSet,2)
 #' }
 
 ###We let the k being adaptative.
-setMethod("imputeMissingValues.WKNN_TN","proFIAset",function(object,k=0.6,classes=c("split","unique")){
+setMethod("impute.KNN_TN","proFIAset",function(object,k=0.6,classes=c("split","unique")){
 	####
 	classes <- match.arg(classes)
 	if(k!=round(k)&(k<=2)){
@@ -1100,6 +1100,50 @@ setMethod("imputeMissingValues.WKNN_TN","proFIAset",function(object,k=0.6,classe
 	object@step <- "Fillpeaks"
 	return(object)
 })
+
+
+
+setGeneric("impute.randomForest", function(object, ...)
+	standardGeneric("impute.randomForest"))
+#' Fill missing values in the peak table using random forest.
+#'
+#' Impute the missing values in an FIA experiment using a random forest implemented
+#' in the missForest package.
+#' @export
+#' @param object A proFIAset object.
+#' @param parallel Shall parallelism be used.
+#' @param ... supplementary arguements to be passed to missForest values.
+#' @return A proFIAset object with the missing values imputated.
+#' @aliases impute.randomForest impute.randomForest,proFIAset-method
+#' @references Stekhoven, D.J. and Buehlmann, P. (2012), 'MissForest - nonparametric missing value imputation for mixed-type data',
+#'  Bioinformatics, 28(1) 2012, 112-118, doi: 10.1093/bioinformatics/btr597
+#' @examples
+#' if(require(plasFIA)){
+#'     data(plasSet)
+#'     ###Reinitializing the data matrix
+#'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
+#'     plasSet<-impute.randomForest(plasSet)
+#' }
+setMethod("impute.randomForest","proFIAset",function(object,parallel=FALSE,...){
+	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then
+									  impute missing values.")
+	dm <- dataMatrix(object)
+	if(! parallel){
+		parallel <- "no"
+	}else{
+		parallel <- "variables"
+	}
+	
+	dm <- missForest(dm,parallelize=parallel,...)$ximp
+	
+	object@dataMatrix <- dm
+	
+	object@step <- "Fillpeaks"
+	return(object)
+})
+
+
+
 
 
 setGeneric("peaksGroup", function(object, ...)
@@ -1623,7 +1667,7 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #'  \item noise estimation. Noise is estimated.
 #'  \item bands filtering. Bands are filtered using the \code{\link{findFIASignal}} function.
 #'  \item peak grouping. Signals from different acquisition are grouped using \code{\link{group.FIA}} function.
-#'  \item missing values imputations. Missing values are imputated using \code{\link{imputeMissingValues.WKNN_TN}} function.
+#'  \item missing values imputations. Missing values are imputated using \code{\link{impute.KNN_TN}} function.
 #' }
 #' Minimal options to launch the workflow are provided, neithertheless if finer option tuning are
 #' necessary, launching the workflow function by function is strongly advised.
@@ -1635,9 +1679,10 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @param parallel A boolean indicating if parallelism is supposed to be used.
 #' @param bpparam A BiocParallelParam object to be passed i BiocParallel is used.
 #' @param noiseEstimation A boolean indicating in noise need to be estimated.
-#' @param SNT A value giving the SNT thrshold, used only if \code{noiseEstimation} is FALSE.
 #' @param maxo Should the maximum intensity be used over the peak area.
-#' @param k The number of neighbors for \code{\link{imputeMissingValues.WKNN_TN}}.
+#' @param SNT A value giving the SNT thrshold, used only if \code{noiseEstimation} is FALSE.
+#' @param imputation The method to use for imputation randomForest or WKNN_TN.Put None if  no imputation should be done.
+#' @param k The number of neighbors for \code{\link{impute.KNN_TN}}, if imputation==KNN_TN
 #' @return A filled proFIAset object ready for exportation.
 #' @aliases analyzeAcquisitionFIA
 #' @examples
@@ -1666,6 +1711,7 @@ analyzeAcquisitionFIA <-
              noiseEstimation = TRUE,
              SNT = NULL,
              maxo = FALSE,
+    		 imputation = c("randomForest","KNN_TN","None"),
              k = NULL) {
         if (!dir.exists(path)) {
             stop(
@@ -1673,6 +1719,7 @@ analyzeAcquisitionFIA <-
                 if you wants to process in a single file."
             )
         }
+    	imputation <- match.arg(imputation)
         if (ppm > 20) {
             warning(
                 "proFIA have been designed for very high resolution data, choose a lower ppm
@@ -1711,12 +1758,23 @@ analyzeAcquisitionFIA <-
         message(mg)
         pset <- group.FIA(pset, ppmGroup, fracGroup = fracGroup)
         pset <- makeDataMatrix(pset,maxo=maxo)
+        if(imputation=="randomForest"){
+        	message("Step 3 : Missing values imputation.")
+        	pset <- impute.randomForest(pset, parallel=parallel)
+        }else if(imputation=="KNN_TN"){
+        	message("Step 3 : Missing values imputation.")
+        	if(!is.null(k)){
+        		message("No k args furnished with imputation set to KNN_TN.")
+        	}
+        	pset <- impute.KNN_TN(pset, k = k)
+        }
+        	
+        
         if(!is.null(k)){
-        message("Step 3 : Missing values imputation.")
-        pset <- imputeMissingValues.WKNN_TN(pset, k = k)
+
         message(paste("Processing finished."))
         }else{
-        	message("No k given, no missing value impputation.")
+
         }
         plot(pset)
         pset

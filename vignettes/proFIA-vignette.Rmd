@@ -38,7 +38,7 @@ during the workflow. The object contains initial information about the sample
 and the classes (when subdirectories for the raw data are present), as well as
 all results froom the processing (e.g., detected peaks, grouping, etc.).  At
 each step, the data quality can be checked by a grphical overview using the `plot` function. For convenience, the 3 processing functions and methods from the
-workflow (`proFIAset`, `group.FIA`, and `imputeMissingValues.WKNN_T`) have been wrapped into
+workflow (`proFIAset`, `group.FIA`, and `impute.KNN_T`) have been wrapped into
 a single `analyzeAcquisitionFIA` function. The final *dataMatrix* can be
 exported, as well as the 2 supplementary tables containing the *sampleMetadata*
 and the *variableMetadata*.
@@ -189,7 +189,7 @@ which is considered to be more robust, or as the maximum intensities
 plasSet <- makeDataMatrix(plasSet, maxo=FALSE)
 ```
 
-## Imputation with `imputeMissingValues.WKNN_T`
+## Imputation with `impute.KNN_T`
 
 Imputation of the data matrix is performed by using a weighted k-nearest
 neighbours approach. A good number for k is half the size of the smaller class.
@@ -200,7 +200,7 @@ neighbours approach. A good number for k is half the size of the smaller class.
 k <- 3
 
 #Missing values  imputation
-plasSet <- imputeMissingValues.WKNN_TN(plasSet, k=k)
+plasSet <- impute.KNN_T(plasSet, k=k)
 
 #Because of the too high k, we reinitialize the data matrix.
 plasSet <- makeDataMatrix(plasSet)
