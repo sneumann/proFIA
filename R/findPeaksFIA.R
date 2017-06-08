@@ -177,7 +177,7 @@ findFIASignal <-
 			 solint = c("poly", "substract", "add"),
 			 fullInteg = FALSE,
 			 dmz =
-			 	0.0005,
+			 	0.001,
 			 graphical = FALSE,
 			 SNT = NULL,
 			 f = c("regression", "TIC"),

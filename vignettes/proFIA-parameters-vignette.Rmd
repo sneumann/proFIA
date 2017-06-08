@@ -1,0 +1,151 @@
+---
+title: "Tuning *proFIA* parameters"
+author: "Alexis Delabriere and Etienne Thevenot"
+date: "`r Sys.Date()`"
+
+vignette: >
+  %\VignetteIndexEntry{processing FIA-HRMS data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=6, fig.height=6, fig.path='figures/')
+```
+#proFIA workflow
+This vignette aims to help the tuning of the parameters of the proFIA workflow, the workflow in him self is described in "*proFIA*: Preprocessing data from flow injection analysis coupled to 
+high-resolution mass spectrometry (FIA-HRMS)". The description of the algorithm and the principle underlying them is given in the paper The more important parameters are the parameters of the peak picking function, _findFIASignal_, which will be discussed in more detail here. The proFIA workflow include the following steps, wrapped in the _analyzeAcquisitionFIA_ function :
+![*proFIA* workflow](workflow_info.png)
+
+* *proFIAset* proFIAset handle the determination of the file structure and the peack picking, it is himself a wrapper for the following function:
+
+  + *estimateNoiseMS*: Estimated the variance of the noise in function of the intensity.
+
+  + *findFIAsignal* : This step determine the peak of injection, and filter the band given the noiseModel.
+
+* *group.FIA*: Group the variables by mz across the samples using a .
+
+* *impute.randomForest* or *impute.KNN_TN*: Impute Missing values in the resulting data matrix.
+
+#Important parameters
+##proFIAset
+*proFIAset* start by a rough estimation of the estimation zone using the *determiningInjectionZone*, then perform band detection. A correct band detection is crucial for the correct processing of the data, and is strongly influenced by the _dmz_ and _ppm_ parameters.
+
+
+* _ppm_ and _dmz_
+A crucial step of proFIA workflow is the detection of bands corresponding to the same m/z signal in the time dimension/ This step take two important parameters _ppm_ and _dmz_. _ppm_ is the deviation that you authorize between two point corresponding to the same mass traces into two consecutives scans in ppm. At lower masses it is well-known that mass spectrometer lose in accuraccy, so the notion of _ppm_ is no more adapted. The fixed _dmz_ parameter handle low masses, the tolerance considered by band detection for a point of m/z _m_ is taken as the minimum between _m_\times ppm \times 1000000 and _dmz_. As proFIA is made to process high resolution FIA-data, the ppm should not be put over 15. On an orbitrap Fusion, we put it to 2, and on an Exactive to 8, and to 5 on a Q-Exactive.
+
+You can visualized the integrated band region using *plotRaw*. 
+```{r plotRaw_exemple_1, message = FALSE,warning=FALSE, results='hide'}
+##We load the plasFIA dataset to obtain exemples :
+library(plasFIA)
+library(proFIA)
+
+data(plasSet)
+
+###We select one acquisition
+filepath <- phenoClasses(plasSet)[1,1]
+filepath
+
+###We load it
+xraw <- xcmsRaw(filepath)
+
+###Using a too high ppm values and using the noise model processed on all the files. These steps are handled by proFIAset in the general case, and should not be called outside, we plot them just for the example.
+band_list <- findBandsFIA(xraw, ppm = 15, dmz = 0.001)
+mzlim <- c(233.067,233.082)
+plotRaw(plasSet,sample=2,ylim=mzlim,type="r",legend=FALSE)
+abline(h=band_list[,c("mzmin","mzmax")],lwd=0.5,lty=2,col="purple")
+```
+Here we see that two bands have been grouped, because of wrong parameters value. These two parameters can be linked ot the resolution of the mass spectrometers.
+
+```{r plotRaw_exemple_2, message = FALSE,warning=FALSE, results='hide'}
+band_list <- findBandsFIA(xraw, ppm = 2, dmz = 0.0005)
+plotRaw(plasSet,sample=2,ylim=mzlim,type="r",legend=FALSE)
+abline(h=band_list[,c("mzmin","mzmax")],lwd=0.5,lty=2,col="purple")
+```
+Here the two bands are correctly split, which indicate a correct splitting of the signal another. You may also spot a too low value of dmz if there is not enough data point on the ditribution of group intensities (see the package vignette).
+
+[//]: # (Add Noise parameters)
+* _bandCoverage_ and _sizeMin_
+These two parameters are used to filter the bands discovered using the _bandCoverage_ and _sizeMin_. A band is kept only if there is at least  _bandCoverage_  fraction of point in the injection zone determined earlier, or if there is at least _sizeMin_ consecutives points.  The _bandCoverage_ value of 0.3 is adapted but may need to be increased in presence of a long right-tailed peak originating from diffusion in the carrier flow, especially if the number of signal found seems to high or too low.
+
+* _pvalthresh_
+The pval thresh parameter is only used in case where a peak is detected with a non nul baseline. This should not happends except if you have strong carry over between the acquisition. For example in *plasSet* dataset, a p-value is calculated on only 22 variables on 834. The parameter value is set to 0.01 by default and, but may be tune down (to 0.001 by exemple) in case of noisy data with strong carry-over effect.
+
+* Situationnal parameters
+    These parameters should not be used in the general case, but they can be used to treat particular acquisition, which ill formed peaks or other issue
+    + _scanMin_ and _scanMax_ The bands and peak will only be detected in the (_scanMin_,_scanMax_) range. This is useful if you have chemical noise at the beginning or at the end of your injection.
+    + _f_ Parameter determine how the injection peak will be determined. The standard method is  'regression' which perform a regression on the most well-shaped peak including a matrix effect term. However this regression start from a peak on the TIC, if the peak on the TIC is wrongly conditioned, this method may fail, in this case you may set _f_ to 'TIC' which won't perform the regression and directly use the TIC peak as a filter. The obtained peak will be affected by matrix effect.
+
+The others arguments does not impact the detection, and are only used for intensity measurement, we invite you to check the documentation page of *findFIASignal* for their effects.
+
+##group.FIA
+The grouping step regroup the signal with similar m/z between different samples. It takes two parameters :
+
+* _ppmGroup_ and _dmz_
+The _ppmGroup_ and the _dmz_ parameter determine the bandwidth of the density taken as a parameter. As the measured mz considering for grouping are the mz of peaks, and not the m/z of individual data points, it is more accurate, we recommend to fix it to at most $ppm/2$. As described in *proFIAset* parameters settings, a tolerance in ppm is not adapted to lower m/z values so the bandwidth is taken as the minimum of the 2 tolerances. The efficiency of the grouping may be adapted using the sleep parameters to check if groups are correctly split, here is an example using two value of _ppmGroup_ and _dmz_
+```{r group_good_value, message=FALSE, results="hide", eval=FALSE}
+plasSet <- group.FIA(plasSet,ppmGroup=5,dmz=0.001,fracGroup=3/18,sleep=0.001)
+```
+![Wrongly formed group](group_wrong_parameters.png)
+Here two distincts groups are clearly visibly and have been wrongly group. We therefore may reduce the _ppm_ and _dmz_ parameters : 
+```{r group_wrong_value, message=FALSE, results="hide",eval=FALSE}
+plasSet <- group.FIA(plasSet,ppmGroup=1,dmz=0.001,fracGroup=3/18,sleep=0.001)
+```
+![Wrongly formed group](group_good_parameters.png)
+
+This set of parameters leads to a correct splitting of the two groups.
+
+* _fracGroup_
+The _fracGroup_ parameter determines in which fraction of any class a signal needs to be found to be considered as valid. It depends of your experimental setup, if your classes are homogeneous the standard value of 0.5 is a good value. This parameter may be lowered if you have hetereogeneous classes.
+
+##makeDataMatrix
+The *makeDataMatrix* function just create the data matrix which will be used and exported. The only important parameters is _maxo_ which is set to FALSE by default. If _maxo_ is FALSE then the intensity considered for the exportation and the missing values imputation is the area integrated by proFIA, if it is set to TRUE, the maximum intensity of the chromatograms. As data in FIA are often noisy, we recommend to keep it to FALSE to reduce the uncertainity of measurements.
+
+##Imputation
+proFIA offer two imputation functions, *impute.KNN\_TN* and *impute.randomForest* : 
+
+* _impute.KNN\_TN_ : A k-NN imputation using truncated distribution estimation.
+    + _k_ correspond to the number of neighbour, it may also be a fraction if you have different number of samples in your classes
+    + _classes_ how to handle imputation for different classes, if set to 'split', the classes are taken separately, if 'unique', the imputation is done on the full data matrix.'split' is the default option and the recommended option.
+    
+    
+* _impute.randomForest_  : A random forest imputation, the parameters are passed to the *missForest* function in the missForest package, the interested readers in invited to read the function documentation for parameters description.
+
+As proFIA does not offer statistical modelling, it is hard to evaluate the effect of missing values imputations using only proFIA. However the *plot* method of the proFIAset object, allows you to see in the bottom right corner an PCA before imputation and after imputation.
+
+```{r missing_values_1}
+data(plasSet)
+
+###You can reset the data matrix this way
+plasSet <- makeDataMatrix(plasSet)
+
+
+###Before imputation.
+plot(plasSet)
+```
+
+And then after imputation :
+```{r missing_values_2}
+
+plasSet <- impute.randomForest(plasSet)
+
+
+###After imputation.
+plot(plasSet)
+```
+The PCA does not show an improvement in this case, because the dataset is not made of an homogeneous class, and therefore ill-suited for missing values imputation.
+
+More information on the parameters may be found in the documentation. It shall be noted that except the peak piccking step is the longest, so picking a small subset of data and testing various parameters, then plotting the obtained information using _plot_ methods and the _plotRaw_ function shloud help you to select the parameters before launching a a workflow on your full dataset.
+
+
+# Session info
+
+Here is the output of `sessionInfo()` on the system on which this document was
+compiled:
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```

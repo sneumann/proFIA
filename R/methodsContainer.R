@@ -1112,7 +1112,7 @@ setGeneric("impute.randomForest", function(object, ...)
 #' @export
 #' @param object A proFIAset object.
 #' @param parallel Shall parallelism be used.
-#' @param ... supplementary arguements to be passed to missForest values.
+#' @param ... supplementary arguements to be passed to missForest function.
 #' @return A proFIAset object with the missing values imputated.
 #' @aliases impute.randomForest impute.randomForest,proFIAset-method
 #' @references Stekhoven, D.J. and Buehlmann, P. (2012), 'MissForest - nonparametric missing value imputation for mixed-type data',
@@ -1902,7 +1902,7 @@ setMethod("cut", "proFIAset", function(x, subsample) {
 
 
 plotVoidRaw <-
-    function(mz, int, scanindex, scantime, title = NULL, ...) {
+    function(mz, int, scanindex, scantime, title = NULL,bandl = NULL,legend=TRUE, ...) {
         vnum <- diff(c(scanindex, length(mz)))
         vtime <- rep(scantime, vnum)
         int <- log10(int)
@@ -1949,9 +1949,11 @@ plotVoidRaw <-
         rInt[2] <- ceiling(rInt[2] + 0.01)
         rcol <- seq(rInt[1], rInt[2], length = 50)
         vcol <- vpal(50)[.bincode(int, rcol)]
+        if(legend){
         layout(matrix(1:2, ncol = 2),
                widths = c(3, 1),
                heights = c(1, 1))
+        }
         legend_image <- as.raster(matrix(rev(vpal(50)), ncol = 1))
         plot(
             vtime,
@@ -1965,6 +1967,10 @@ plotVoidRaw <-
             ylim = ylim,
             pch = 19
         )
+        if(!is.null(bandl)){
+        	abline(h=bandl,col="purple",lwd=0.5,lty=2)
+        }
+        if(legend){
         plot(
             c(0, 2),
             c(rInt[1], rInt[2]),
@@ -1983,6 +1989,7 @@ plotVoidRaw <-
         )
         rasterImage(legend_image, 0, rInt[1], 1, rInt[2])
         layout(1)
+        }
     }
 
 # setGeneric("plotRaw", function(object, ...)
@@ -2000,8 +2007,10 @@ plotVoidRaw <-
 #' @param object A proFIAset object.
 #' @param type \code{"raw"} indicate that raw data needs to be plotted
 #' and \code{"peak"} indicate that only the filtered signals will be plotted.
-#' @param sample The numpber of the sample in the object classes table
-#' to be plotted.
+#' @param sample The number of the sample in the object classes table
+#' to be plotted. The classes table can be taken using the phenoClasses function.
+#' @param bandl A boolean shall a line be added on the detected bands. Only used in type is set to \code{"peak"}
+#' @param legend Shall the legend be plotted along the graph
 #' @param ... xlim,ylim and size to be passed to plot functions.
 #' @return No value is returned.
 #' @aliases plotRaw plotRaw,proFIAset-method
@@ -2017,7 +2026,9 @@ plotVoidRaw <-
 #' }
 setMethod("plotRaw", "proFIAset", function(object,
                                            type = c("raw", "peaks"),
-                                           sample = NULL,
+										   sample = NULL,
+										   bandl = TRUE,
+                                           legend=TRUE,
                                            ...) {
     type <- match.arg(type)
     if (!(sample %in% 1:nrow(object@classes))) {
@@ -2031,7 +2042,7 @@ setMethod("plotRaw", "proFIAset", function(object,
                     xraw@scanindex,
                     xraw@scantime,
                     title = title,
-                    ...)
+        			legend=legend,...)
     }
     if (type == "peaks") {
         ###Verifying that the peak list is there
@@ -2073,7 +2084,7 @@ setMethod("plotRaw", "proFIAset", function(object,
         voo <- order(vscan)
         vmz <- vmz[voo]
         vint <- vint[voo]
-        toReturn <- plotVoidRaw(vmz, vint, vindex, xraw@scantime, title = title, ...)
+        toReturn <- plotVoidRaw(vmz, vint, vindex, xraw@scantime,bandl =  peaklist[,"mz"],title = title,legend=legend,...)
     }
 })
 

@@ -13,7 +13,7 @@
 
 \item{parallel}{Shall parallelism be used.}
 
-\item{...}{supplementary arguements to be passed to missForest values.}
+\item{...}{supplementary arguements to be passed to missForest function.}
 }
 \value{
 A proFIAset object with the missing values imputated.

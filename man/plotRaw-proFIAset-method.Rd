@@ -7,7 +7,7 @@
 \title{Plotting of raw data}
 \usage{
 \S4method{plotRaw}{proFIAset}(object, type = c("raw", "peaks"),
-  sample = NULL, ...)
+  sample = NULL, bandl = TRUE, legend = TRUE, ...)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -15,8 +15,12 @@
 \item{type}{\code{"raw"} indicate that raw data needs to be plotted
 and \code{"peak"} indicate that only the filtered signals will be plotted.}
 
-\item{sample}{The numpber of the sample in the object classes table
-to be plotted.}
+\item{sample}{The number of the sample in the object classes table
+to be plotted. The classes table can be taken using the phenoClasses function.}
+
+\item{bandl}{A boolean shall a line be added on the detected bands. Only used in type is set to \code{"peak"}}
+
+\item{legend}{Shall the legend be plotted along the graph}
 
 \item{...}{xlim,ylim and size to be passed to plot functions.}
 }
