@@ -570,7 +570,7 @@ setGeneric("group.FIA", function(object, ...)
 #' considered, we recommend to use 0.5*ppm where ppm is the pp parameter
 #' of band detection in the \code{\link{proFIAset}} function.
 #' @param sleep If not 0 densities are plotted every \code{sleep} ms.
-#' @param dmz A minimum mz deviation value which can be considered over the deviation in ppm
+#' @param dmzGroup A minimum mz deviation value which can be considered over the deviation in ppm
 #' if it is higher. This account for low mass deviation.
 #' @param fracGroup The minimum fraction of samples of a class required to make
 #' a group.
@@ -584,17 +584,18 @@ setGeneric("group.FIA", function(object, ...)
 #' data(plasSet)
 #'
 #' #Parameters are defined.
-#' ppmGroup<-1
-#' fracGroup<-0.2
+#' ppm_group <- 1
+#' dmz_group <- 0.0005
+#' frac_group<-0.2
 #'
-#' plasSet<-group.FIA(plasSet,ppmGroup=ppmGroup,fracGroup=fracGroup)
+#' plasSet<-group.FIA(plasSet,ppmGroup=ppm_group,fracGroup=frac_group,dmzGroup=dmz_group)
 #' plasSet
 #' }
 setMethod("group.FIA", "proFIAset", function(object,
                                              ppmGroup,
                                              solvar = FALSE,
                                              sleep = 0,
-											 dmz=0.0005,
+											 dmzGroup=0.0005,
                                              fracGroup = 0.5) {
     ###CHecking that files have been peaks picked
     if (nrow(object@peaks) == 0) {
@@ -674,7 +675,7 @@ setMethod("group.FIA", "proFIAset", function(object,
         pos <- pos + 1
 
         ###Determining hte base of the signal to skip for a resolution.
-        bw <- max(5 * massInter[i] * ppmGroup / (10 ^ 6),dmz)
+        bw <- max(5 * massInter[i] * ppmGroup / (10 ^ 6),dmzGroup)
         if (bw > inter / 4) {
             warning(
                 "Interval for grouping seems to short. Increase the inter parameter or modify the resolution parameter"
@@ -1055,13 +1056,16 @@ setGeneric("impute.KNN_TN", function(object, ...)
 
 ###We let the k being adaptative.
 setMethod("impute.KNN_TN","proFIAset",function(object,k=0.6,classes=c("split","unique")){
-	####
 	classes <- match.arg(classes)
-	if(k!=round(k)&(k<=2)){
-		stop("k should be an integer superior to 2 or a real inferior to one.")
+	if(k!=round(k)){
+		###
+		if(k>1) stop("k shloud be an integer greater than 2 or a float inferior to 1.")
+		rta <- table(object@classes[,1])
+		prta <- which((as.numeric(rta)*k)<2)
+		if(length(prta)!=0){
+			stop(paste("The class(es)",names(rta)[prta],"got a too low number of samples to use with parameter",k))
+		}
 	}
-	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then
-									  impute missing values.")
 	dm <- dataMatrix(object)
 	dm[which(dm==0,arr.ind = TRUE)] <- NA
 	dm <- log10(dm)
@@ -1097,7 +1101,6 @@ setMethod("impute.KNN_TN","proFIAset",function(object,k=0.6,classes=c("split","u
 	cnames <- colnames(object@group)
 	object@group <- cbind(object@group,as.numeric(b_imputation))
 	colnames(object@group) <- c(cnames,"imputationOk")
-	object@step <- "Fillpeaks"
 	return(object)
 })
 
@@ -1125,8 +1128,6 @@ setGeneric("impute.randomForest", function(object, ...)
 #'     plasSet<-impute.randomForest(plasSet)
 #' }
 setMethod("impute.randomForest","proFIAset",function(object,parallel=FALSE,...){
-	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then
-									  impute missing values.")
 	dm <- dataMatrix(object)
 	if(! parallel){
 		parallel <- "no"
@@ -1137,10 +1138,50 @@ setMethod("impute.randomForest","proFIAset",function(object,parallel=FALSE,...){
 	dm <- missForest(dm,parallelize=parallel,...)$ximp
 	
 	object@dataMatrix <- dm
-	
+	return(object)
+})
+
+
+
+setGeneric("impute.FIA", function(object, ...)
+	standardGeneric("impute.FIA"))
+#' Fill missing values using the provided method.
+#'
+#' Impute the missing values in an FIA experiment using a Weighted
+#' K-Nearest Neighbours on Truncated Distribution implemented in \code{\link{impute.KNN_TN}} or by random forest using the \code{\link{impute.randomForest}} function.
+#' @export
+#' @param object A proFIAset object.
+#' @param method The method to be used for missing value imputation.
+#' @param ... Arguments furnished to the imputation method. No argument is required for \code{\link{impute.randomForest}} and the number of neighbours should be furnished using the \code{\link{impute.KNN_TN}} function.
+#' @aliases impute.FIA impute.FIA,proFIAset-method
+#' @examples
+#' if(require(plasFIA)){
+#'     data(plasSet)
+#'
+#'     ###Reinitializing the data matrix an using KNN
+#'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
+#'     plasSet<-impute.FIA(plasSet,method="KNN_TN",k=2)
+#'     
+#'     ###Reinitializing the data matrix and using randomForest
+#'     plasSet<-makeDataMatrix(plasSet,maxo=FALSE)
+#'     plasSet<-impute.FIA(plasSet,method="randomForest")
+#' }
+
+###We let the k being adaptative.
+setMethod("impute.FIA","proFIAset",function(object,method=c("KNN_TN","randomForest"),...){
+	if(object@step=="Fillpeaks") stop("Missing value have already been imputed, redo it, use makeDataMatrix then
+									  impute missing values.")
+	method <- match.arg(method)
+	if(method=="KNN_TN"){
+		object <- impute.KNN_TN(object,...)
+	}else if(method == "randomForest"){
+		object <- impute.randomForest(object,...)
+	}
 	object@step <- "Fillpeaks"
 	return(object)
 })
+
+
 
 
 
@@ -1591,21 +1632,32 @@ setMethod("plotSamplePeaks", "proFIAset", function(object, subsample = NULL, dia
 	if(diagPlotL) {
 		omar <- par("mar")
 		par(mar=c(2.6,2.6,2.1,1.1))
-	}
+		plot(
+			1:2,
+			xlab = "",
+			ylab = "Injection Peak",
+			main = mtitle,
+			xlim = rangex,
+			ylim = c(0, 1),
+			type="n"
+		)
+		mtext("Time (s)", side = 1, line = 2.5, cex = 0.7)
+	}else{
 	###To be usre to get the good plot.
 	plot(
 		1:2,
-		## xlab = "Time (s)",
-		## ylab = "Injection Peak",
+		 xlab = "Scan number",
+		 ylab = "Injection Peak",
 		main = mtitle,
 		xlim = rangex,
 		ylim = c(0, 1),
 		type="n"
 	)
+	}
 	if(diagPlotL) {
 		par(mar = omar)
 	}
-	mtext("Time (s)", side = 1, line = 2.5, cex = 0.7)
+
 	## mtext(mtitle, line = 1, cex = 0.8)
 	for (i in 1:length(subsample)) {
 		lines((vbeginning[i]):(vbeginning[i] + vl[i] - 1),
@@ -1674,45 +1726,50 @@ setMethod("exportDataMatrix", "proFIAset", function(object, filename = NULL) {
 #' @export
 #' @param path The path to the directory of acquistion.
 #' @param ppm The tolerance for deviations in m/z between scan in ppm \code{\link{findFIASignal}}
+#' @param dmz The minimum tolerance for deviations in m/z between scan in Dalton \code{\link{findFIASignal}}
 #' @param fracGroup The fraction of smaple form a class necessary to make a group.
 #' @param ppmGroup A ppm tolerance to group signals between samples \code{\link{group.FIA}}.
+#' @param dmzGroup The minimum tolerance in Dalton to group signals between samples \code{\link{group.FIA}}.
 #' @param parallel A boolean indicating if parallelism is supposed to be used.
 #' @param bpparam A BiocParallelParam object to be passed i BiocParallel is used.
 #' @param noiseEstimation A boolean indicating in noise need to be estimated.
 #' @param maxo Should the maximum intensity be used over the peak area.
 #' @param SNT A value giving the SNT thrshold, used only if \code{noiseEstimation} is FALSE.
-#' @param imputation The method to use for imputation randomForest or WKNN_TN.Put None if  no imputation should be done.
-#' @param k The number of neighbors for \code{\link{impute.KNN_TN}}, if imputation==KNN_TN
+#' @param imputation The method to use for imputation 'randomForest' (\code{\link{impute.randomForest}})  or 'KNN_TN' (\code{\link{impute.KNN_TN}}). Put 'None' if  no imputation should be done.
+#' @param ... Supplementary arguments to be passed to the imputation method, see \code{\link{impute.FIA}} for detail.
 #' @return A filled proFIAset object ready for exportation.
 #' @aliases analyzeAcquisitionFIA
 #' @examples
 #' if(require(plasFIA)){
 #'     path<-system.file(package="plasFIA","mzML")
-#'
+#'     
 #'     #Defining parameters for Orbitrap fusion.
 #'     ppm<-2
-#'     ppmGroup<-1
+#'     dmz <- 0.0005
+#'     ppm_group<-1
+#'     dmz_group <- 0.0003
 #'     paral<-FALSE
-#'     fracGroup<-0.2
+#'     frac_group<-0.2
 #'     k<-2
 #'     maxo<-FALSE
-#'
-#'     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
-#'
+#'     vimputation <- "randomForest"
+#'     \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,dmz=dmz,imputation=vimputation,fracGroup=frac_group,ppmGroup=ppm_group,dmzGroup=dmz_group,k=k,maxo=maxo,parallel=paral)}
 #' }
 
 analyzeAcquisitionFIA <-
     function(path,
              ppm,
+    		 dmz = 0.001,
              fracGroup = 0.5,
              ppmGroup = NULL,
+    		 dmzGroup = 0.0005,
              parallel = FALSE,
              bpparam = NULL,
              noiseEstimation = TRUE,
              SNT = NULL,
              maxo = FALSE,
-    		 imputation = c("randomForest","KNN_TN","None"),
-             k = NULL) {
+    		 imputation = c("KNN_TN","randomForest","None"),
+             ...) {
         if (!dir.exists(path)) {
             stop(
                 "The specified must be a valid directory leading to an FIA experiment. Use findSignal
@@ -1743,6 +1800,7 @@ analyzeAcquisitionFIA <-
         pset <- proFIAset(
             path,
             ppm,
+            dmz=dmz,
             parallel = parallel,
             BPPARAM = bpparam,
             noiseEstimation = TRUE
@@ -1756,26 +1814,13 @@ analyzeAcquisitionFIA <-
                     paste(mg, "Max Intensity will be used."),
                     paste(mg, "Area will be used."))
         message(mg)
-        pset <- group.FIA(pset, ppmGroup, fracGroup = fracGroup)
+        pset <- group.FIA(pset, ppmGroup, fracGroup = fracGroup, dmzGroup = dmzGroup)
         pset <- makeDataMatrix(pset,maxo=maxo)
-        if(imputation=="randomForest"){
-        	message("Step 3 : Missing values imputation.")
-        	pset <- impute.randomForest(pset, parallel=parallel)
-        }else if(imputation=="KNN_TN"){
-        	message("Step 3 : Missing values imputation.")
-        	if(!is.null(k)){
-        		message("No k args furnished with imputation set to KNN_TN.")
-        	}
-        	pset <- impute.KNN_TN(pset, k = k)
+        message("Step 3 : Missing values imputation.")
+        if(imputation!="None"){
+            pset <- impute.FIA(pset,method=imputation,...)
         }
-        	
-        
-        if(!is.null(k)){
-
         message(paste("Processing finished."))
-        }else{
-
-        }
         plot(pset)
         pset
         }

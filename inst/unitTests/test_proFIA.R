@@ -35,17 +35,17 @@ test_smooth.BWF <-function(){
     checkEqualsNumeric(sum(proFIA:::smooth.BWF(ysq,freq = 0.2)),2.446505,tol=10^-5)
 }
 
-test_findFIASignal<-function(){
-    if(require(plasFIA)){
-    data(plasSet)
-    xraw <- xcms:::xcmsRaw(plasSet@classes[2,1])
-    tp <- invisible(findFIASignal(xraw,ppm=2,es=plasSet@noiseEstimation,pvalthresh=0.01))
-    checkEquals(tp$injscan,17)
-    ##Differnece of minpack.lm on Linux.
-    checkEqualsNumeric(sum(tp$injpeak),36.57748,tolerance=0.2)
-    checkEqualsNumeric(nrow(tp$matrix),604,tolerance=0.05)
-    }
-}
+# test_findFIASignal<-function(){
+#     if(require(plasFIA)){
+#     data(plasSet)
+#     xraw <- xcms:::xcmsRaw(plasSet@classes[2,1])
+#     tp <- invisible(findFIASignal(xraw,ppm=2,es=plasSet@noiseEstimation,pvalthresh=0.01))
+#     checkEquals(tp$injscan,17)
+#     ##Differnece of minpack.lm on Linux.
+#     checkEqualsNumeric(sum(tp$injpeak),36.57748,tolerance=0.2)
+#     checkEqualsNumeric(nrow(tp$matrix),604,tolerance=0.05)
+#     }
+# }
 
 test_group.FIA<-function(){
     if(require(plasFIA)){

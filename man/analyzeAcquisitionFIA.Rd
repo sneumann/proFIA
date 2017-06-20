@@ -4,19 +4,23 @@
 \alias{analyzeAcquisitionFIA}
 \title{Wrapper function for the full FIA analysis workflow.}
 \usage{
-analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
-  parallel = FALSE, bpparam = NULL, noiseEstimation = TRUE, SNT = NULL,
-  maxo = FALSE, imputation = c("randomForest", "KNN_TN", "None"),
-  k = NULL)
+analyzeAcquisitionFIA(path, ppm, dmz = 0.001, fracGroup = 0.5,
+  ppmGroup = NULL, dmzGroup = 5e-04, parallel = FALSE, bpparam = NULL,
+  noiseEstimation = TRUE, SNT = NULL, maxo = FALSE,
+  imputation = c("KNN_TN", "randomForest", "None"), ...)
 }
 \arguments{
 \item{path}{The path to the directory of acquistion.}
 
 \item{ppm}{The tolerance for deviations in m/z between scan in ppm \code{\link{findFIASignal}}}
 
+\item{dmz}{The minimum tolerance for deviations in m/z between scan in Dalton \code{\link{findFIASignal}}}
+
 \item{fracGroup}{The fraction of smaple form a class necessary to make a group.}
 
 \item{ppmGroup}{A ppm tolerance to group signals between samples \code{\link{group.FIA}}.}
+
+\item{dmzGroup}{The minimum tolerance in Dalton to group signals between samples \code{\link{group.FIA}}.}
 
 \item{parallel}{A boolean indicating if parallelism is supposed to be used.}
 
@@ -28,9 +32,9 @@ analyzeAcquisitionFIA(path, ppm, fracGroup = 0.5, ppmGroup = NULL,
 
 \item{maxo}{Should the maximum intensity be used over the peak area.}
 
-\item{imputation}{The method to use for imputation randomForest or WKNN_TN.Put None if  no imputation should be done.}
+\item{imputation}{The method to use for imputation 'randomForest' (\code{\link{impute.randomForest}})  or 'KNN_TN' (\code{\link{impute.KNN_TN}}). Put 'None' if  no imputation should be done.}
 
-\item{k}{The number of neighbors for \code{\link{impute.KNN_TN}}, if imputation==KNN_TN}
+\item{...}{Supplementary arguments to be passed to the imputation method, see \code{\link{impute.FIA}} for detail.}
 }
 \value{
 A filled proFIAset object ready for exportation.
@@ -49,16 +53,17 @@ necessary, launching the workflow function by function is strongly advised.
 \examples{
 if(require(plasFIA)){
     path<-system.file(package="plasFIA","mzML")
-
+    
     #Defining parameters for Orbitrap fusion.
     ppm<-2
-    ppmGroup<-1
+    dmz <- 0.0005
+    ppm_group<-1
+    dmz_group <- 0.0003
     paral<-FALSE
-    fracGroup<-0.2
+    frac_group<-0.2
     k<-2
     maxo<-FALSE
-
-    \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,fracGroup=fracGroup,ppmGroup=ppmGroup,k=k,parallel=paral)}
-
+    vimputation <- "randomForest"
+    \dontrun{plasSet<-analyzeAcquisitionFIA(path,ppm=ppm,dmz=dmz,imputation=vimputation,fracGroup=frac_group,ppmGroup=ppm_group,dmzGroup=dmz_group,k=k,maxo=maxo,parallel=paral)}
 }
 }

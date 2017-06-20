@@ -883,12 +883,17 @@ determiningInjectionZone <-
 		sizeMed <- min(pinc + (pinc + 1) %% 2, 7)
 		vMedSeq <- medianFiltering(seqTIC$intensity, size = sizeMed)
 		
+
 		
 		if (pinc[1] == 1) {
-			stop("impossible to process the ifle as no scan is present.")
+			stop("impossible to process the file as no injection scan is present.")
 		}
 		
 		pbegin <- max(1, pinc[1] - 1)
+		
+		###ADDED TO PROCESS URINE DATA WITH OVERLAP.
+		while(pbegin>1 & seqTIC$intensity[pbegin]>seqTIC$intensity[pbegin-1]) pbegin <- pbegin-1
+		
 		
 		pmax <- which.max(seqTIC$intensity)
 		

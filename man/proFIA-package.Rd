@@ -11,8 +11,9 @@ format) to a peak table suitable for statistical anlysis.
 }
 \details{
 The full workflow is composed of the following chain of function.
-\code{proFIAset}=>\code{group.FIA}=>\code{imputeMissingValues.WKNN_TN} and the full process is easy to automate using the
+\code{proFIAset}=>\code{group.FIA}=>\code{impute.FIA} and the full process is easy to automate using the
 analyzeAcquisitionFIA which do all the steps easely. Resulting table may be easely
 exported using the 3 exports function (\code{exportDataMatrix},\code{exportVariableMetadata}\code{exportSampleMetadata})
-Groups may be visualised using \code{plotEICs} to plot all the EICs of a group.
+Groups may be visualised using \code{plotEICs} to plot all the EICs of a group. An overview of an acquisition may be otained using
+the \code{plot} function.
 }

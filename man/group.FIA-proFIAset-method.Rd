@@ -7,7 +7,7 @@
 \title{Group the peaks of an FIA acquisition.}
 \usage{
 \S4method{group.FIA}{proFIAset}(object, ppmGroup, solvar = FALSE, sleep = 0,
-  dmz = 5e-04, fracGroup = 0.5)
+  dmzGroup = 5e-04, fracGroup = 0.5)
 }
 \arguments{
 \item{object}{A proFIAset object.}
@@ -21,7 +21,7 @@ signal have been conserved in the \code{\link{findFIASignal}} function.}
 
 \item{sleep}{If not 0 densities are plotted every \code{sleep} ms.}
 
-\item{dmz}{A minimum mz deviation value which can be considered over the deviation in ppm
+\item{dmzGroup}{A minimum mz deviation value which can be considered over the deviation in ppm
 if it is higher. This account for low mass deviation.}
 
 \item{fracGroup}{The minimum fraction of samples of a class required to make
@@ -41,10 +41,11 @@ if(require("plasFIA")){
 data(plasSet)
 
 #Parameters are defined.
-ppmGroup<-1
-fracGroup<-0.2
+ppm_group <- 1
+dmz_group <- 0.0005
+frac_group<-0.2
 
-plasSet<-group.FIA(plasSet,ppmGroup=ppmGroup,fracGroup=fracGroup)
+plasSet<-group.FIA(plasSet,ppmGroup=ppm_group,fracGroup=frac_group,dmzGroup=dmz_group)
 plasSet
 }
 }
