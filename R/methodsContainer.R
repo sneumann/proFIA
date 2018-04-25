@@ -409,8 +409,6 @@ switchSummaryPeak<-function(x){
 }
 
 
-# if (!isGeneric("plot"))
-# 	setGeneric("plot", function(x, y, ...) standardGeneric("plot"))
 #' Plot a summary of an FIA experiment.
 #'
 #' Plot a summary of an FIA acquisition. This summary aims to provides an overview of the
@@ -434,8 +432,9 @@ switchSummaryPeak<-function(x){
 #' @export
 #' @param x A proFIAset object.
 #' @param type Shall the plotting be done by sample or by class for the barplot ?
+#' @param ... Not used at the moment.
 #' 
-#' @aliases plot.FIA
+#' @aliases plot.FIA plot,proFIAset-method plot,proFIAset,ANY,ANY-method
 #' @return Nothing
 #' @examples
 #' if(require("plasFIA")){
@@ -454,7 +453,7 @@ switchSummaryPeak<-function(x){
 #' 
 #' }
 #' @rdname plot
-setMethod("plot", signature(x = "proFIAset"),plot <- function(x, type=c("sample","class")){
+setMethod("plot", "proFIAset",plot <- function(x, type=c("sample","class"),...){
 	
 	vstep <- 0
 	title_pca <- NULL

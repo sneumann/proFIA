@@ -199,7 +199,6 @@ findFIASignal <-
 		n <- length(xraw@scantime)
 		sizepeak <-
 			determiningInjectionZone(xraw, scanmin = scanmin, scanmax = scanmax, ...)
-		sizepeak <- sizepeak + scanmin - 1
 		if (length(sizepeak) < 3) {
 			warning(paste(
 				"No injection peak has been detected in the acquisition",
@@ -569,7 +568,7 @@ findFIASignal <-
 						p_candidate <- peaklim[2]
 						
 						vtreshint <-msol + 2 * sdsol
-						while (smoothedSeq[p_candidate]>vtreshint&smoothedSeq[p_candidate+1]>vtreshint ) {
+						while (smoothedSeq[p_candidate]>vtreshint&&smoothedSeq[p_candidate+1]>vtreshint ) {
 							###We try to put
 							p_candidate <- p_candidate + 1
 							if(p_candidate == length(xraw@scantime)) break
@@ -825,7 +824,8 @@ medianFiltering <- function(x, size = 5, complete = TRUE) {
 #' giving the injection peak. Shloud be used carefuly.
 #'
 #' @export
-#' @param xraw An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.
+#' @param xraw An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}. It may also be
+#'  a TIC sequence as a list scan intensity.
 #' @param threshold A relative increase born to detect the limit of the injection
 #' peak.
 #' @param graphical should the resulting limit be plotted.
@@ -883,7 +883,7 @@ determiningInjectionZone <-
 		sizeMed <- min(pinc + (pinc + 1) %% 2, 7)
 		vMedSeq <- medianFiltering(seqTIC$intensity, size = sizeMed)
 		
-
+		
 		
 		if (pinc[1] == 1) {
 			stop("impossible to process the file as no injection scan is present.")
@@ -892,7 +892,7 @@ determiningInjectionZone <-
 		pbegin <- max(1, pinc[1] - 1)
 		
 		###ADDED TO PROCESS URINE DATA WITH OVERLAP.
-		while(pbegin>1 & seqTIC$intensity[pbegin]>seqTIC$intensity[pbegin-1]) pbegin <- pbegin-1
+		while(pbegin>1 && seqTIC$intensity[pbegin]>seqTIC$intensity[pbegin-1]) pbegin <- pbegin-1
 		
 		
 		pmax <- which.max(seqTIC$intensity)
@@ -902,7 +902,7 @@ determiningInjectionZone <-
 		
 		###We normalize both dimension.
 		vy <- vMedSeq / max(vMedSeq)
-		vx <- seq(0, 1, length = length(xraw@scantime))
+		vx <- seq(0, 1, length = length(seqTIC$intensity))
 		inter <- vx[2] - vx[1]
 		
 		####Removing the one with an angl to the bottom.
@@ -943,7 +943,7 @@ determiningInjectionZone <-
 		if(length(pright)==0){
 			warning("No right limit may be detected, this can be caused
 					by wrongly formed injection peak.")
-			p3 <- scanmax
+			p3 <- scanmax-scanmin+1
 		}else{
 			
 			val_cos_1 <- (a[pright] ^ 2 + b[pright] ^
@@ -978,12 +978,15 @@ determiningInjectionZone <-
 		solventVal <- mean(seqTIC$intensity[1:res[1]])
 		
 		iout <-
-			c(unique(1:res[1]), unique(res[2]:length(seqTIC$intensity)))
+			c(unique(1:res[1]))
+		if(res[2]!= length(seqTIC$intensity)){
+			iout <- c(iout,unique(res[2]:length(seqTIC$intensity)))
+		}
 		iin <- res[1]:res[2]
 		
 		areaIn <- trapezArea(xraw@scantime[iin], seqTIC$intensity[iin])
 		areaOut <- trapezArea(xraw@scantime[iout],
-									   seqTIC$intensity[iout])
+							  seqTIC$intensity[iout])
 		#Substracting the solvent.
 		areaIn <-
 			areaIn - trapezArea(xraw@scantime[iin], rep(solventVal, length(iin)))
@@ -1007,6 +1010,155 @@ determiningInjectionZone <-
 	}
 
 
+
+###This is the ufnction used to recalculate
+### a better injection windows.
+determiningInjectionZoneFromTIC <-
+	function(seqTIC,
+			 threshold = 0.05,
+			 scanmin = NULL,
+			 scanmax = NULL) {
+		#Cutting the acquisition if necessary.
+		if (is.null(scanmin)) {
+			scanmin <- 1
+		}
+		if (is.null(scanmax)) {
+			scanmax <- length(seqTIC$scan)
+		}
+		
+		seqTIC$scan <- seqTIC$scan[scanmin:scanmax]
+		seqTIC$intensity <- seqTIC$intensity[scanmin:scanmax]
+		
+		##Getting the range of variation of the TIC :
+		rangInt <- range(seqTIC$intensity)
+		
+		###We make the supposition that first scan is solvent.
+		valSol <- seqTIC$intensity[1]
+		
+		###Checking if the peak is finished.
+		valThreshEnd <- diff(rangInt) * threshold + valSol
+		
+		###Beginning of increase of the peak.
+		pinc <- seqTIC$intensity > valThreshEnd
+		
+		###True for 3 conscutives scans.
+		pinc <-
+			which(pinc[1:(length(pinc) - 2)] &
+				  	pinc[2:(length(pinc) - 1)] & pinc[3:length(pinc)])[1]
+		
+		sizeMed <- min(pinc + (pinc + 1) %% 2, 7)
+		vMedSeq <- medianFiltering(seqTIC$intensity, size = sizeMed)
+		
+		
+		
+		if (pinc[1] == 1) {
+			stop("impossible to process the file as no injection scan is present.")
+		}
+		
+		pbegin <- max(1, pinc[1] - 1)
+		
+		###ADDED TO PROCESS URINE DATA WITH OVERLAP.
+		while(pbegin>1 && seqTIC$intensity[pbegin]>seqTIC$intensity[pbegin-1]) pbegin <- pbegin-1
+		
+		pmax <- which.max(seqTIC$intensity)
+		
+		candidates_limits <-
+			(pmax + (pmax - pbegin)):length(seqTIC$intensity)
+		
+		###We normalize both dimension.
+		vy <- vMedSeq / max(vMedSeq)
+		vx <- seq(0, 1, length = length(seqTIC$intensity))
+		inter <- vx[2] - vx[1]
+		
+		####Removing the one with an angl to the bottom.
+		candidates_limits <-
+			candidates_limits[which(seqTIC$intensity[candidates_limits - 1] > 
+										seqTIC$intensity[candidates_limits] &
+										seqTIC$intensity[candidates_limits + 1]<
+										seqTIC$intensity[candidates_limits])]
+		
+		
+		##We test with the angle between the summit and the end of the signal.
+		a <-
+			sqrt((vy[candidates_limits] - rep(vy[pmax], length(
+				candidates_limits
+			))) ^ 2 +
+				(rep(vx[pmax], length(
+					candidates_limits
+				)) - vx[candidates_limits]) ^ 2)
+		b <-
+			sqrt((vy[candidates_limits] - rep(vy[length(vx)], length(
+				candidates_limits
+			))) ^ 2 +
+				(rep(vx[length(vx)], length(
+					candidates_limits
+				)) - vx[candidates_limits]) ^ 2)
+		c <-
+			sqrt(rep((vx[pmax] - vx[length(vx)]) ^ 2 + (vy[pmax] - vy[length(vx)]) ^
+					 	2,
+					 length(candidates_limits)))
+		
+		##lines value <-
+		lvalues <- ((rep(vx[length(vx)], length(
+			candidates_limits
+		)) - vx[candidates_limits])/(vx[length(vx)] - vx[pmax]))*
+			(vy[pmax] - vy[length(vx)])+vy[length(vx)]
+		
+		pright <- which(lvalues>=vy[candidates_limits])
+		if(length(pright)==0){
+			warning("No right limit may be detected, this can be caused
+					by wrongly formed injection peak.")
+			p3 <- scanmax-scanmin+1
+		}else{
+			
+			val_cos_1 <- (a[pright] ^ 2 + b[pright] ^
+						  	2 - c[pright] ^ 2) / (2 * a[pright] *
+						  						  	b[pright])
+			
+			valcos <- acos(val_cos_1)
+			
+			
+			#We get the peak with the highest angle.
+			p3 <- candidates_limits[pright[which.min(valcos - a[pright] * b[pright])]]
+			
+		}
+		
+		res <- c(pbegin,p3,pmax)
+		
+		####CHecking the percentage of area taken by the peak of proFIA.
+		solventVal <- mean(seqTIC$intensity[1:res[1]])
+		
+		iout <-
+			c(unique(1:res[1]))
+		if(res[2]!= length(seqTIC$intensity)){
+			iout <- c(iout,unique(res[2]:length(seqTIC$intensity)))
+		}
+		iin <- res[1]:res[2]
+		
+		areaIn <- trapezArea(seqTIC$scan[iin], seqTIC$intensity[iin])
+		areaOut <- trapezArea(seqTIC$scan[iout],
+							  seqTIC$intensity[iout])
+		#Substracting the solvent.
+		areaIn <-
+			areaIn - trapezArea(seqTIC$scan[iin], rep(solventVal, length(iin)))
+		areaOut <-
+			areaIn - trapezArea(seqTIC$scan[iout], rep(solventVal, length(iout)))
+		
+		percentPres <- areaIn / (areaIn + areaOut)
+		
+		if (percentPres <= 0.75) {
+			warnings(
+				paste(
+					"The detected injection peak only include only ",
+					round(percentPres * 100),
+					" of intensity.",
+					sep = ""
+				)
+			)
+			
+		}
+		return(res+scanmin-1)
+	}
 
 
 #' Determine the limits of the injection peak in a FIA acquisition.
@@ -1166,6 +1318,9 @@ determiningSizePeak.Geom <-
 #' @param gpeak An approximation of the injection peak, if NULL
 #' determining sizepeak.Geom will be used.
 #' @param selIndex A seleciton of index to make the regression. We recommend to let it to NULL.
+#' @param scanmin The first scan to consider for regression.
+#' @param scanmax The last scan to consider for regression.
+#' @param refinement Should the starting point of the regression be refined using the selected EICs.
 #' @param graphical shald the individually fitted components be plotted.
 #' @return A vector contaning the injection peak
 #' @aliases getInjectionPeak
@@ -1195,9 +1350,13 @@ getInjectionPeak <-
 			 iquant = 0.95,
 			 gpeak = NULL,
 			 selIndex = NULL,
+			 scanmin = 1,
+			 scanmax = length(xraw@scantime),
+			 refinement = TRUE,
 			 graphical = FALSE) {
+		graphical <- TRUE
 		if (is.null(gpeak)) {
-			gpeak <- determiningInjectionZone(xraw)
+			gpeak <- determiningInjectionZone(xraw,scanmin=scanmin,scanmax=scanmax)
 		}
 		
 		
@@ -1213,14 +1372,22 @@ getInjectionPeak <-
 				}, xraw = xraw)
 			
 		} else{
-			ttrue <- which(bandlist[, "meanSolvent"] == 0)
+			####TEST OF NEW VERSION
+			ttrue <- which(bandlist[, "meanSolvent"] == 0 | bandlist[, "meanSolvent"]*100<bandlist[,"maxIntensity"])
+			####TEST OF OLD VERSION
 			ttrue <- bandlist[ttrue,]
 			
 			
 			
 			###Hard thresh
-			ht <- quantile(ttrue[, "maxIntensity"], probs = iquant)
-			ttrue <- ttrue[which(ttrue[, "maxIntensity"] >= ht),]
+			if(ceiling(length(ttrue)*(1-iquant))<5){
+				ht <- quantile(ttrue[, "maxIntensity"], probs = iquant)
+				ttrue <- ttrue[which(ttrue[, "maxIntensity"] >= ht),]
+			}else{
+				ttrue <- ttrue[order(ttrue[,"maxIntensity"],decreasing=TRUE)[1:min(5,nrow(ttrue))],]
+				
+			}
+			
 			###Making hte matrix with the selected threshold
 			matInt <- apply(ttrue, 1, function(x, xraw) {
 				requireNamespace("xcms")
@@ -1257,7 +1424,7 @@ getInjectionPeak <-
 			tvbo <- sort(tvb, decreasing = TRUE)
 			ctvb <- cumsum(tvbo) / sum(tvbo)
 			poscut <- which(ctvb > 0.6)[1]
-			pvd <- density(vb, bw = sec / 3)
+			pvd <- density(xraw@scantime[vb], bw = sec / 3)
 			pmax <- which.max(pvd$y)
 			vp <- findPeaksLimits(pvd$y, pmax - 1, pmax + 1)
 			
@@ -1271,7 +1438,7 @@ getInjectionPeak <-
 			}
 			
 			inter <- pvd$x[vp]
-			tokeep <- which(vb >= inter[1] & vb <= inter[2])
+			tokeep <- which(xraw@scantime[vb] >= inter[1] & xraw@scantime[vb] <= inter[2])
 			if (length(tokeep) > 20) {
 				oa <- apply(matInt[, tokeep], 2, max)
 				tokeep <- tokeep[order(oa, decreasing = TRUE)[1:20]]
@@ -1283,7 +1450,7 @@ getInjectionPeak <-
 			}
 			
 			
-			matDInt <- matInt[, tokeep]
+			matDInt <- matInt[, tokeep,drop=FALSE]
 		}
 		message(paste(
 			ncol(matDInt),
@@ -1306,31 +1473,61 @@ getInjectionPeak <-
 		
 		####○Making the first guess of the parameters.
 		#mu sigma tau then the a b and h
+		tMat <- t(t(matDInt) / apply(matDInt, 2, max))
 		inita <- 0.05
 		initb <- 5
-		initpar <-
-			c(
-				xraw@scantime[gpeak[3] - floor((gpeak[3] - gpeak[1]) / 2)],
-				(xraw@scantime[gpeak[3]] - xraw@scantime[gpeak[1]]) * 0.5,
-				20,
-				rep(inita, n),
-				rep(initb, n),
-				vmax * 1.2
+		initpar <- NULL
+		gpeakr <- NULL
+		if(refinement){
+			###A new TIC is constructed form the matrix
+			nTIC <- apply(tMat,1,sum)
+			gpeakr <- determiningInjectionZoneFromTIC(list(intensity=nTIC,scan=seq_along(nTIC)),scanmin=scanmin,scanmax=scanmax)
+			initpar <- 
+				c(
+					xraw@scantime[gpeakr[3]],
+					(xraw@scantime[gpeakr[3]] - xraw@scantime[gpeakr[1]]) * 0.5,
+					3^((gpeakr[2]-gpeakr[3])/(2*(gpeakr[3]-gpeakr[1]))),
+					rep(0.02, n),
+					rep(3, n),
+					vmax * 1.2
 			)
+			
+		}else{
+			gpeakr <- gpeak
+			initpar <-
+				c(
+					xraw@scantime[gpeak[3] - floor((gpeak[3] - gpeak[1]) / 2)],
+					(xraw@scantime[gpeak[3]] - xraw@scantime[gpeak[1]]) * 0.5,
+					20,
+					rep(inita, n),
+					rep(initb, n),
+					vmax * 1.2
+				)
+			
+		}
 		#matResiduals<-function(mpp,xx,mobs,type="gaussian",n){
-		weigthvec <- length(c(
-			rep(2, gpeak[1] - 1),
-			5,
-			seq(1, 2, length = (gpeak[3] - gpeak[1]) - 1),
-			seq(2, 1.5, length = (gpeak[2] - gpeak[3] +
-								  	1)),
-			rep(1.5, length(xraw@scantime) - gpeak[2])
-		))
+		weigthvec <- NULL
+		if(refinement){
+			
+		weigthvec <- c(rep(1,gpeakr[1]-1),
+					   seq(1,2,length=gpeakr[3]-gpeakr[1]),
+					   seq(2,1,length=gpeakr[2]-gpeakr[3]-1),
+					   rep(1,length(xraw@scantime)-gpeakr[2]))
+		
+		}else{
+			weigthvec <- length(c(
+				rep(2, gpeakr[1] - 1),
+				5,
+				seq(1, 2, length = (gpeakr[3] - gpeakr[1]) - 1),
+				seq(2, 1.5, length = (gpeakr[2] - gpeakr[3] +
+									  	1)),
+				rep(1.5, length(xraw@scantime) - gpeakr[2])
+			))	
+		}
 		lower <- c(0, 0,-Inf, rep(0, 3 * n))
 		
 		
 		nlC <- nls.lm.control(maxiter = 100, ptol = 0.001)
-		tMat <- t(t(matDInt) / apply(matDInt, 2, max))
 		if (graphical) {
 			matplot(tMat,
 					type = "l",
@@ -1358,11 +1555,11 @@ getInjectionPeak <-
 			tr <- persoConv(xraw@scantime, parv, type = "gaussian")
 			mat_eff <- -matrix_effect(tr, parm[1], parm[2])
 			fitted <- (tr + mat_eff) * parm[3]
-			fitted[1:gpeak[1]] <- 0
-			tr[1:gpeak[1]] <- 0
+			# fitted[1:gpeak[1]] <- 0
+			# tr[1:gpeak[1]] <- 0
 			multiplier[i] <- max(fitted)
 			if (graphical) {
-				plot(xraw@scantime,
+				graphics::plot(xraw@scantime,
 					 tMat[, i],
 					 ylim = c(0, max(1, tr * parm[3])),
 					 type = "l")
@@ -1372,8 +1569,16 @@ getInjectionPeak <-
 			}
 		}
 		TP <- persoConv(xraw@scantime, p = parv)
-		TP[1:gpeak[1]] <- 0
-		tMat <- tMat %*% diag(multiplier)
+		###
+		i <- 1
+		mgpeak <- max(TP)
+		while(i < gpeak[1] & TP[i] < 0.01*mgpeak){
+			TP[i] <- 0
+			i <- i+1
+		}
+		
+		# TP[1:gpeak[1]] <- 0
+		tMat <- tMat %*% diag(multiplier,nrow=length(multiplier),ncol=length(multiplier))
 		if (graphical) {
 			matplot(
 				tMat,
@@ -1466,7 +1671,7 @@ matResiduals <-
 		trmatres <- t(t(trmat + mmareffect) * h)
 		matdiff <- observed - trmatres
 		matdiff <- matdiff * weigth
-		matdiff[1:beginning,] <- 0
+		# matdiff[1:beginning,] <- 0
 		return(matdiff)
 	}
 
