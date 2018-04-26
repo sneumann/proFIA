@@ -1342,7 +1342,6 @@ determiningSizePeak.Geom <-
 #'   vpeak <- getInjectionPeak(xraw,bandlist=tbands,gpeak=gp)
 #'   plot(vpeak,type="l")
 #' }
-
 getInjectionPeak <-
 	function(xraw,
 			 bandlist,
