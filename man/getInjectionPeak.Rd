@@ -5,7 +5,8 @@
 \title{Fit an injection peak to an FIA acquisition.}
 \usage{
 getInjectionPeak(xraw, bandlist, sec = 2, iquant = 0.95, gpeak = NULL,
-  selIndex = NULL, graphical = FALSE)
+  selIndex = NULL, scanmin = 1, scanmax = length(xraw@scantime),
+  refinement = TRUE, graphical = FALSE)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
@@ -22,6 +23,12 @@ would not be used for peak determination.}
 determining sizepeak.Geom will be used.}
 
 \item{selIndex}{A seleciton of index to make the regression. We recommend to let it to NULL.}
+
+\item{scanmin}{The first scan to consider for regression.}
+
+\item{scanmax}{The last scan to consider for regression.}
+
+\item{refinement}{Should the starting point of the regression be refined using the selected EICs.}
 
 \item{graphical}{shald the individually fitted components be plotted.}
 }

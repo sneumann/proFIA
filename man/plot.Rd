@@ -4,14 +4,18 @@
 \name{plot,proFIAset,ANY-method}
 \alias{plot,proFIAset,ANY-method}
 \alias{plot.FIA}
+\alias{plot,proFIAset-method}
+\alias{plot,proFIAset,ANY,ANY-method}
 \title{Plot a summary of an FIA experiment.}
 \usage{
-\S4method{plot}{proFIAset,ANY}(x, type = c("sample", "class"))
+\S4method{plot}{proFIAset,ANY}(x, type = c("sample", "class"), ...)
 }
 \arguments{
 \item{x}{A proFIAset object.}
 
 \item{type}{Shall the plotting be done by sample or by class for the barplot ?}
+
+\item{...}{Not used at the moment.}
 }
 \value{
 Nothing

@@ -8,7 +8,8 @@ determiningInjectionZone(xraw, threshold = 0.05, graphical = FALSE,
   scanmin = NULL, scanmax = NULL)
 }
 \arguments{
-\item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}
+\item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}. It may also be
+a TIC sequence as a list scan intensity.}
 
 \item{threshold}{A relative increase born to detect the limit of the injection
 peak.}
