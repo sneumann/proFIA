@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+src/*.o
+src/*.so
+src/*.dll
+proFIA_rproj/*
+proFIA_rproj
