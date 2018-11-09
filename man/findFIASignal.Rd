@@ -9,7 +9,8 @@ findFIASignal(xraw, ppm, es = NULL, solvar = c("throw", "keep"),
   solint = c("poly", "substract", "add"), fullInteg = FALSE, dmz = 0.001,
   graphical = FALSE, SNT = NULL, f = c("regression", "TIC"),
   pvalthresh = NULL, scanmin = 1, scanmax = length(xraw@scantime),
-  bandCoverage = 0.3, sizeMin = NULL, bandlist = NULL, ...)
+  bandCoverage = 0.3, shiftFactor = 0.3, sizeMin = NULL,
+  bandlist = NULL, ...)
 }
 \arguments{
 \item{xraw}{An xcmsRaw object as returned by \code{\link[xcms]{xcmsRaw}}.}

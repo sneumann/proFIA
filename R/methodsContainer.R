@@ -453,7 +453,7 @@ switchSummaryPeak<-function(x){
 #' 
 #' }
 #' @rdname plot
-setMethod("plot", "proFIAset",plot <- function(x, type=c("sample","class"),...){
+setMethod("plot", "proFIAset",function(x, type=c("sample","class"),...){
 	
 	vstep <- 0
 	title_pca <- NULL

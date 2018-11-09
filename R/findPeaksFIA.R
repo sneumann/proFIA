@@ -127,6 +127,7 @@ fuseRange <- function(r1, r2, extend = TRUE) {
 #' @param scanmax The last scan to consider.
 #' @param bandCoverage A filter on the number of point found in a band. 0.3 by default to allow matrix
 #' effect.
+#' @param shiftFactor
 #' @param sizeMin The minimum number of point considered for a band to be considred for solvent filtration.
 #' @param bandlist An optional bandlist to be passed.
 #' @param ... more arguments to be passed to the \link{determiningInjectionZone} function.
@@ -185,6 +186,7 @@ findFIASignal <-
 			 scanmin = 1,
 			 scanmax = length(xraw@scantime),
 			 bandCoverage = 0.3,
+			 shiftFactor=0.3,
 			 sizeMin = NULL,
 			 bandlist = NULL,
 			 ...) {
@@ -218,7 +220,8 @@ findFIASignal <-
 				"solventIntensity",
 				"corSampPeak",
 				"timeShifted",
-				"signalOverSolventRatio"
+				"signalOverSolventRatio",
+				"type"
 			)
 		
 		###Which kind of quality control will be used.
@@ -340,6 +343,19 @@ findFIASignal <-
 		message("Band filtering: ", appendLF = FALSE)
 		memmess <- 1
 		for (i in 1:nrow(bandlist)) {
+			#0 is max on sizepeak
+			#1 rigth not extended
+			#2 is ok by extension from right
+			#3 is ok by extension from right using extended filter
+			#4 left not extended
+			#5 is ok by extension from the left
+			#6 is shifted on the right
+			#+10 for shifted
+			#+100 for solvent
+			#+1000
+			typep <- NA_integer_
+			
+			
 			bshifted <- 0
 			vact <- floor(i / nrow(bandlist) * 100) %/% 10
 			if (vact != memmess) {
@@ -348,21 +364,7 @@ findFIASignal <-
 			}
 			vEic <-
 				rawEIC(xraw, mzrange = c(bandlist[i, "mzmin"], bandlist[i, "mzmax"]))
-			#Extending the sequence to at least two times the size of the
-			#injection filter
-			# if (length(vEic$intensity) / length(modelPeak) < 2) {
-			# 	nlength <- nextn(2 * length(modelPeak), 2)
-			# 	valrep <-
-			# 		mean(vEic$intensity[(length(vEic$intensity) - 3):length(vEic$intensity)])
-			# 	vEic$intensity <- c(vEic$intensity,
-			# 						rep(valrep,
-			# 							times = nlength - length(vEic$intensity)))
-			# }
-			
-			
-			
-			###Determining if there is solvant in the signal.
-			#seqSol = vEic$intensity[1:sizepeak[1]]
+
 			###CHecking if there is only isolated values, 0 means no reliably detectable solvant.
 			Bsol <-
 				ifelse(checkIsoValues(vEic$intensity[1:sizepeak[1]]), FALSE, TRUE)
@@ -426,6 +428,7 @@ findFIASignal <-
 				###First estimation of the peak limit. peaklim will store the peak limit all along the process.
 				#peaklim <- c(posMax - (floor(nf / 2)), posMax + (floor(nf / 2)))
 				##TEST1
+				typep <- 0
 				peaklim <-
 					c(pMf + pleftModelPeaks, pMf + prightModelPeaks)
 				
@@ -434,11 +437,9 @@ findFIASignal <-
 					findPeaksLimits(smoothedSeq, peaklim[1] + 1, peaklim[2] - 1)
 				
 				#Once the limit of the peak is located, the peak limit is found.
-				#peaklim[2] <- pl[2]
 				peaklim <- fuseRange(peaklim, pl)
 				###The filter coeff goes down to find if there is a second peak.
-				# 				posRawMax <- which.max(convolvedSeqF[max((pMf - adjustZone), 1):(pMf +
-				#                                                                                        adjustZone)]) + max(((pMf - adjustZone) - 1),1)
+				# adjustZone)]) + max(((pMf - adjustZone) - 1),1)
 				#We find the limit on the convolved sequence.
 				flim <-
 					findPeaksLimits(convolvedSeqF, pMf - 1, pMf + 1)
@@ -446,6 +447,8 @@ findFIASignal <-
 				###Case where the max is the right of the injection peak.
 				if (posMax < sizepeak[2] &
 					posMax > sizepeak[3]) {
+					
+					typep <- 1
 					###We check the second part of the interval.
 					# SecondInter <- c(sizepeak[1] - floor(nf / 2),
 					#                 min(flim[1] - floor(nf /
@@ -454,7 +457,7 @@ findFIASignal <-
 						c(sizepeak[1] - floor(nf / 2), flim[1])
 					
 					#Necessary as flim may return -1 if out of sequence.
-					SecondInter[1] = max(SecondInter[1], 0)
+					SecondInter[1]  <- max(SecondInter[1], 0)
 					
 					#Checking hat there is an inter to consider.
 					if (SecondInter[2] - SecondInter[1] > 1) {
@@ -466,14 +469,18 @@ findFIASignal <-
 						SecondMax <- Secondpmf + pmaxModelPeak
 						
 						###CHecking that the second max is in the left part of the injection peak.
-						if (SecondMax > sizepeak[1] &
-							SecondMax < sizepeak[3]) {
+						if (SecondMax > sizepeak[1] &&
+							SecondMax < sizepeak[3]&&
+							(Secondpmf!=SecondInter[1])&&
+							(convolvedSeqF[Secondpmf]>convolvedSeqF[Secondpmf-1])&&
+							(convolvedSeqF[Secondpmf]>convolvedSeqF[Secondpmf+1])) {
 							###The limit of the second peak is localised in a decent windows.
 							pl <- findPeaksLimits(smoothedSeq,
 												  SecondMax - 1,
 												  SecondMax + 1)
 							peaklim[1] <- pl[1]
 							extendedFilter <- TRUE
+							typep <- 2
 						} else {
 							### Checking hte injection filter in the good direction.
 							SecondInter <-
@@ -486,12 +493,15 @@ findFIASignal <-
 								###Checking if we are not too close from the beginning.
 								SecondMax <-
 									which.max(convolvedSeqInj[SecondInter[1]:SecondInter[2]]) +
-									SecondInter[1] - 1 + pmaxInjPeak
+									SecondInter[1] - 1# + pmaxInjPeak
 								Secondpmf <-
 									SecondMax + pmaxInjPeak
 								second_filter <- TRUE
-								if (Secondpmf > sizepeak[1] &
-									Secondpmf < pl[1]) {
+								if (Secondpmf > sizepeak[1] &&
+									Secondpmf < pl[1]&&
+									(SecondMax!=SecondInter[1])&&
+									(convolvedSeqInj[SecondMax]>convolvedSeqInj[SecondMax-1])&&
+									(convolvedSeqInj[SecondMax]>convolvedSeqInj[SecondMax+1])){
 									rawSecondPmf <-
 										which.max(smoothedSeq[(SecondMax - adjustZone):(SecondMax +
 																							adjustZone)]) + (SecondMax - adjustZone) - 1
@@ -500,15 +510,40 @@ findFIASignal <-
 														rawSecondPmf - 2,
 														rawSecondPmf + 2)
 									extendedFilter <- TRUE
+									typep <- 3
 									peaklim[1] <- pl[1]
+								}else{
+									bshifted <- 1
+									# if(Bsol){
+									peaklim[2] <- max(peaklim[2],flim[2])
+									# }else{
+									# 	peaklim[2] <- length(xraw@scantime)
+									# }
+								
 								}
+							}else{
+								bshifted <- 1
+								# if(Bsol){
+								peaklim[2] <- max(peaklim[2],flim[2])
+								# }else{
+								# 	peaklim[2] <- length(xraw@scantime)
+								# }
 							}
 						}
+					}else{
+						bshifted <- 1
+						# if(Bsol){
+						peaklim[2] <- max(peaklim[2],flim[2])
+						# }else{
+						# 	peaklim[2] <- length(xraw@scantime)
+						# }	
 					}
 				}
+				###Case where the detected mas is at the left of the peak.
 				if (posMax >= sizepeak[1] &
-					###Case where the detected mas is at the left of the peak.
 					posMax < sizepeak[3]) {
+					
+					typep <- 4
 					#In this case the injection peak is always the limit
 					peaklim[1] <- sizepeak[1]
 					
@@ -523,6 +558,8 @@ findFIASignal <-
 					###CHecking that the second max is in the left part of the injection peak.
 					if (SecondMax > sizepeak[3] &
 						SecondMax <= sizepeak[2]) {
+						
+						typep <- 5
 						###The limit of the second peak is localised in a decent windows.
 						rawSecondPmf <-
 							which.max(smoothedSeq[(SecondMax - adjustZone):(SecondMax +
@@ -538,6 +575,8 @@ findFIASignal <-
 				}
 			}
 			if (posMax > sizepeak[2]) {
+				
+				typep <- 6
 				##Checking that there is some retention in  the colmun.
 				##If it the case the peak is wider than usual, so wider than the
 				##modelPeak.
@@ -584,6 +623,7 @@ findFIASignal <-
 										x=xraw@scantime,y=vEic$intensity,p1=posMax,p3=length(xraw@scantime))
 						###Possible adding a term to considered the area in the peak and the are outside.
 						if(length(vval)!=0){
+							typep <- typep+1000
 						peaklim[2] <- vcandidates[which.min(vval)]
 						}
 					}
@@ -619,8 +659,11 @@ findFIASignal <-
 				# if (peaklim[2] > sizepeak[2] &
 				# 	abs(posMax - sizepeak[2]) < abs(posMax - sizepeak[3]) &
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
-				if (abs(posMax-sizepeak[3])>abs((posMax-sizepeak[2])*2)&(!extendedFilter)) {
+				if (abs(posMax-sizepeak[3])>abs(shiftFactor*(posMax-sizepeak[2]))&(!extendedFilter)) {
 					bshifted <- 1
+					
+				}else{
+					bshifted <- 0
 				}
 			} else if (QC == "Nes") {
 				p1 <- max(1,peaklim[1]-1)
@@ -631,6 +674,7 @@ findFIASignal <-
 					seq(smoothedSeq[p1], smoothedSeq[p2],
 						length = peaklim[2] - peaklim[1] + 1)
 				)
+				typep <- typep+100
 				if (pval > pvalthresh)
 					next
 				if (SNTval < 1.5)
@@ -641,8 +685,11 @@ findFIASignal <-
 				# 	abs(peaklim[1] - sizepeak[3]) < abs(peaklim[1] - sizepeak[1])) {
 				# 	bshifted <- 1
 				# }
-				if (abs(posMax-sizepeak[3])>abs((posMax-sizepeak[2])*1.1)&(!extendedFilter)) {
+				if (abs(posMax-sizepeak[3])>abs((posMax-sizepeak[2])*shiftFactor)&(!extendedFilter)) {
 					bshifted <- 1
+					typep <- typep+10
+				}else{
+					bshifted <- 0
 				}
 			}else if(QC=="Snt"){
 				if (SNTval < SNT)
@@ -708,7 +755,8 @@ findFIASignal <-
 					valSol,
 					valCor,
 					bshifted,
-					SNTval
+					SNTval,
+					typep
 				)
 				}
 				###The peak is only add if the peak is not detected as solvant.
@@ -730,7 +778,7 @@ findFIASignal <-
 								sprintf("%0.4f", bandlist[i, "mzmin"]),
 								"-",
 								sprintf("%0.4f", bandlist[i, "mzmax"]))
-				plot(
+				graphics::plot(
 					xraw@scantime,
 					vEic$intensity / mEic,
 					type = "n",
@@ -1302,6 +1350,75 @@ determiningSizePeak.Geom <-
 		return(peaklim)
 	}
 
+
+
+start_param_emg <- function(tx,ty){
+	sol <- ty[1]
+	mv <- which.max(ty)
+	q10 <- (ty[mv]-sol)*0.1+sol
+	
+	p1 <- which.min(abs(ty[1:mv]-q10))
+	p2 <- which.min(abs(ty[mv:length(ty)]-q10))+mv-1
+	
+	
+	a <- tx[mv]-tx[p1]
+	b <- tx[p2]-tx[mv]
+	
+	
+	ratio <- b/a
+	
+	csig_1 <- 0
+	csig_2 <- 0
+	csig_3 <-0
+	
+	cm2_1 <- 0
+	cm2_2 <- 0
+	cm2_3 <- 0
+	
+	if(ratio<1.46){
+		csig_1 <- -1.2951
+		csig_2 <- 6.6162
+		csig_3 <- -0.9516
+		
+		cm2_1 <- 0.1270
+		cm2_2 <- -0.06458
+		cm2_3 <- 0.4766
+	}else{
+		csig_1 <- 0
+		csig_2 <- 3.3139
+		csig_3 <- 1.1147
+		
+		cm2_1 <- -0.0299
+		cm2_2 <- 0.3569
+		cm2_3 <- 0.1909
+	}
+
+	
+	Wr <- (a+b)
+	sig_g <- Wr/(csig_1*(ratio^2)+csig_2*(ratio)+csig_3)
+	
+	H <- sol
+	mu <- tx[mv]
+	sigma <- sig_g
+	M2 <- (cm2_3+cm2_2*ratio+cm2_1*(ratio^2))*(Wr^2)
+	tau <- sqrt((M2-sig_g^2))
+	
+	
+	parv <- c(mu,sig_g,1/tau)
+	
+	
+	
+	graphics::plot(tx,ty/max(ty),type="l",col="black",main=sprintf("%0.3f",ratio))
+	lines(tx,persoConv(tx,parv),col="purple")
+	abline(v=c(tx[p1],tx[mv],tx[p2]),col="darkgreen")
+	parv
+	
+}
+
+
+
+
+
 #' Fit an injection peak to an FIA acquisition.
 #'
 #' Determine an injection peak as an exponential modified gaussian
@@ -1437,7 +1554,33 @@ getInjectionPeak <-
 			}
 			
 			inter <- pvd$x[vp]
-			tokeep <- which(xraw@scantime[vb] >= inter[1] & xraw@scantime[vb] <= inter[2])
+			tokeepb <- ((xraw@scantime[vb] >= inter[1]) & (xraw@scantime[vb] <= inter[2]))
+			
+			
+			
+			###Now we check that the maximum fall within the limits of the Maximum calculated value.
+			###Maximum covering 2s is estimated.
+			
+			vmax <- apply(matInt, 2, which.max)
+			pna <- which(is.na(vmax))
+			if (length(pna) > 0) {
+				matInt <- matInt[,-pna]
+				vmax <- vmax[-pna]
+			}
+			tvmax <- table(vmax)
+			tvmaxo <- sort(tvmax, decreasing = TRUE)
+			ctvmax <- cumsum(tvmaxo) / sum(tvmaxo)
+			poscut <- which(ctvmax > 0.6)[1]
+			pvdm <- density(xraw@scantime[vmax], bw = sec)
+			pmaxb <- which.max(pvdm$y)
+			vpm <- findPeaksLimits(pvdm$y, pmaxb - 1, pmaxb + 1)
+			
+			
+			interm <- pvdm$x[vpm]
+			tokeepm <- ((xraw@scantime[vmax] >= interm[1]) & (xraw@scantime[vb] <= interm[2]))
+			
+			
+			tokeep <- which(tokeepb&tokeepm)
 			if (length(tokeep) > 20) {
 				oa <- apply(matInt[, tokeep], 2, max)
 				tokeep <- tokeep[order(oa, decreasing = TRUE)[1:20]]
@@ -1455,78 +1598,72 @@ getInjectionPeak <-
 			ncol(matDInt),
 			"chromatograms have been used for peak shape determination."
 		))
-		#densval=density(vb,0.5)
-		###Clustring by the time limit.
 		vmax <- apply(matDInt, 2, max)
 		matSInt <- t(t(matDInt) / vmax)
 		n <- ncol(matSInt)
 		
 		
+		####
 		
-		# plot(xraw@scantime,
-		#      matInt[, 4] / max(matInt[, 4]),
-		#      col = "green",
-		#      type = "l")
+		
 		
 		opar <- list()
 		
-		####○Making the first guess of the parameters.
+		####Making the first guess of the parameters.
 		#mu sigma tau then the a b and h
 		tMat <- t(t(matDInt) / apply(matDInt, 2, max))
-		inita <- 0.05
-		initb <- 5
+		inita <- 0.5
+		initb <- 0.34
 		initpar <- NULL
 		gpeakr <- NULL
+		
+		
+		nTIC <- apply(tMat,1,sum)
+		nTIC <- medianFiltering(nTIC,size=5)
+		initial_estimates <- start_param_emg(xraw@scantime,nTIC)
+		
+
+		tMat2 <- apply(tMat,2,medianFiltering)
+		
 		if(refinement){
 			###A new TIC is constructed form the matrix
-			nTIC <- apply(tMat,1,sum)
+			# nTIC <- apply(tMat,1,sum)
+
+			
 			gpeakr <- determiningInjectionZoneFromTIC(list(intensity=nTIC,scan=seq_along(nTIC)),scanmin=scanmin,scanmax=scanmax)
 			initpar <- 
 				c(
-					xraw@scantime[gpeakr[3]],
-					(xraw@scantime[gpeakr[3]] - xraw@scantime[gpeakr[1]]) * 0.5,
-					3^((gpeakr[2]-gpeakr[3])/(2*(gpeakr[3]-gpeakr[1]))),
-					rep(0.02, n),
-					rep(3, n),
-					vmax * 1.2
-			)
-			
-		}else{
-			gpeakr <- gpeak
-			initpar <-
-				c(
-					xraw@scantime[gpeak[3] - floor((gpeak[3] - gpeak[1]) / 2)],
-					(xraw@scantime[gpeak[3]] - xraw@scantime[gpeak[1]]) * 0.5,
-					20,
+					initial_estimates[1],
+					initial_estimates[2],
+					initial_estimates[3],
 					rep(inita, n),
 					rep(initb, n),
-					vmax * 1.2
+					rep(1.1,n)#vmax * 1.1
 				)
-			
 		}
 		#matResiduals<-function(mpp,xx,mobs,type="gaussian",n){
-		weigthvec <- NULL
-		if(refinement){
+		# weigthvec <- NULL
+		# if(refinement){
 			
 		weigthvec <- c(rep(1,gpeakr[1]-1),
 					   seq(1,2,length=gpeakr[3]-gpeakr[1]),
 					   seq(2,1,length=gpeakr[2]-gpeakr[3]-1),
 					   rep(1,length(xraw@scantime)-gpeakr[2]))
 		
-		}else{
-			weigthvec <- length(c(
-				rep(2, gpeakr[1] - 1),
-				5,
-				seq(1, 2, length = (gpeakr[3] - gpeakr[1]) - 1),
-				seq(2, 1.5, length = (gpeakr[2] - gpeakr[3] +
-									  	1)),
-				rep(1.5, length(xraw@scantime) - gpeakr[2])
-			))	
-		}
-		lower <- c(0, 0,-Inf, rep(0, 3 * n))
+		# }else{
+		# 	weigthvec <- length(c(
+		# 		rep(2, gpeakr[1] - 1),
+		# 		5,
+		# 		seq(1, 2, length = (gpeakr[3] - gpeakr[1]) - 1),
+		# 		seq(2, 1.5, length = (gpeakr[2] - gpeakr[3] +
+		# 							  	1)),
+		# 		rep(1.5, length(xraw@scantime) - gpeakr[2])
+		# 	))	
+		# }
+		lower <- c(1, 2,0.0001, rep(0, 3 * n))
 		
 		
-		nlC <- nls.lm.control(maxiter = 100, ptol = 0.001)
+		nlC <- nls.lm.control(maxiter = 100, ptol = 0.001,nprint=FALSE,epsfcn=0.00001)
 		if (graphical) {
 			matplot(tMat,
 					type = "l",
@@ -1536,7 +1673,7 @@ getInjectionPeak <-
 		parestimate <- nls.lm(
 			par = initpar,
 			fn = matResiduals,
-			observed = tMat,
+			observed = tMat2,
 			type = "gaussian",
 			beginning = gpeak[1],
 			xx = xraw@scantime,
@@ -1548,12 +1685,21 @@ getInjectionPeak <-
 		cest <- coef(parestimate)
 		parv <- NULL
 		parv <- cest[1:3]
+		# cat("initial_estimates",sprintf("%0.4f",initial_estimates),"parv",sprintf("%0.4f",parv))
 		multiplier <- numeric(n)
 		for (i in 1:n) {
 			parm <- cest[c(3 + i, 3 + i + n, 3 + i + 2 * n)]
 			tr <- persoConv(xraw@scantime, parv, type = "gaussian")
 			mat_eff <- -matrix_effect(tr, parm[1], parm[2])
 			fitted <- (tr + mat_eff) * parm[3]
+			
+			###initial par
+			# parm2 <- initpar[c(3 + i, 3 + i + n, 3 + i + 2 * n)]
+			# tr2 <- persoConv(xraw@scantime, initpar[1:3], type = "gaussian")
+			# mat_eff2 <- -matrix_effect(tr2, parm2[1], parm2[2])
+			# fitted2 <- (tr2 + mat_eff2) * parm2[3]
+			
+			
 			# fitted[1:gpeak[1]] <- 0
 			# tr[1:gpeak[1]] <- 0
 			multiplier[i] <- max(fitted)
@@ -1565,6 +1711,10 @@ getInjectionPeak <-
 				lines(xraw@scantime, fitted, col = "red")
 				lines(xraw@scantime, (mat_eff + 1) * parm[3], col = "blue")
 				lines(xraw@scantime, tr * parm[3] , col = "green")
+				
+				# lines(xraw@scantime, fitted2, col = "red",lty=2)
+				# lines(xraw@scantime, (mat_eff2 + 1) * parm2[3], col = "blue",lty=2)
+				# lines(xraw@scantime, tr2 * parm2[3] , col = "green",lty=2)
 			}
 		}
 		TP <- persoConv(xraw@scantime, p = parv)
@@ -1621,16 +1771,18 @@ persoConv <- function(time, p, type = c("gaussian", "triangle")) {
 	type <- match.arg(type)
 	mu <- p[1]
 	sigma <- p[2]
+	tau <- p[3]
 	x <- NULL
-	#cat(mu,sigma,tau,"\n")
+	# cat(mu,sigma,tau,"\n")
 	if (type == "gaussian") {
 		x <- dnorm(time, mean = mu, sd = sigma)
 	}
 	if (type == "triangle") {
 		x <- sapply((time - mu) / sigma + 0.5, triangleDistribution)
 	}
-	tau <- p[3]
-	yexp <- exp(-time / tau) / tau
+	yexp <- dexp(time,tau)
+	# yexp <- exp(-time / tau)# / tau
+	# yexp <- yexp/max(yexp)
 	vv <- convolve(yexp, rev(x))
 	return(vv / max(vv))
 }
@@ -1638,7 +1790,7 @@ persoConv <- function(time, p, type = c("gaussian", "triangle")) {
 ###Term - a added to remove the intensity in 0
 matrix_effect <- function(intensity, a, b) {
 	tr <-
-		a * exp(b * intensity) - a#+(p$c)*exp(p$d*intensity)) #+p$c*exp(p$d*intensity))/(p$a+p$c)
+		a * (exp(b * intensity)-1)#+(p$c)*exp(p$d*intensity)) #+p$c*exp(p$d*intensity))/(p$a+p$c)
 	tr
 }
 
@@ -1666,7 +1818,8 @@ matResiduals <-
 				- matrix_effect(mat[, x], a, b)
 			}, mat = trmat, va = a, vb = b)
 		#We ignore the point before the solvent peak.
-		
+		if(any(is.nan(trmat)))cat("mu/sig/tau:",mpp[1:3])
+		# cat("trmat",any(is.nan(trmat)),"mmareffect",any(is.nan( mmareffect)),"\n")
 		trmatres <- t(t(trmat + mmareffect) * h)
 		matdiff <- observed - trmatres
 		matdiff <- matdiff * weigth

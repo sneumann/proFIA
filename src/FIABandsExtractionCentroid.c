@@ -46,6 +46,7 @@ struct band
 {
     struct centroid * seqCentroid;
     int size;
+    int maxSize;
     double meanMz;
     struct band * prevBand;
     struct band * nextBand;
@@ -79,6 +80,7 @@ void debuggingBVizualisation(struct band * posBand)
 }
 
 
+
 void debuggingVizualisation(struct bandList * bL)
 {
     struct band * posBand=bL->head;
@@ -91,6 +93,19 @@ void debuggingVizualisation(struct bandList * bL)
         posBand=posBand->nextBand;
     }
 
+}
+
+
+//PHD VISUS ONLY.
+int size_bl(struct bandList *bL){
+    struct band * posBand=bL->head;
+    int countBand=0;
+    while(posBand!=NULL)
+    {
+        countBand++;
+        posBand=posBand->nextBand;
+    }
+    return countBand;
 }
 
 
@@ -130,37 +145,27 @@ double distIntMz(struct centroid C1,struct centroid C2)
 
 struct band * fuseBand(struct band * B1,struct band * B2,int first_scan, int max_scan,int * fused,double * scantime,struct bandList * bL)
 {
-    //Rprintf(" in ");
     int posB1=0;
     int posB2=0;
     int posN=0;
     int nexception=0;
     if(B1->size+B2->size>max_scan-first_scan+1)
     {
-        //Rprintf(" Excess ");
         *fused=0;
         return(B2);
     }
-    //Rprintf(" in2 ");
-    //Rprintf(" Bmalloc %d %d",B1->size,B2->size);
     struct band * nBand=malloc(sizeof(struct band));
-    //Rprintf("k");
     nBand->seqCentroid=malloc((B1->size+B2->size)*sizeof(struct centroid));
-    //Rprintf(" Bmallocok ");
     nBand->size=B1->size+B2->size;
     *fused=1;
     while(posB1<B1->size&&posB2<B2->size)
     {
-        //Rprintf(" w ");
-        //Rprintf("p1%d %d %d %d",posB1,posB2,B1->size,B2->size);
         if(B1->seqCentroid[posB1].scan==B2->seqCentroid[posB2].scan)
         {
             //Case fusion forced
-            //Rprintf(" fusion stopped A \n");
             nexception++;
             if(nexception>=NUM_EXCEPT)
             {
-                //Rprintf("a");
                 *fused=0;
                 break;
             }
@@ -168,7 +173,6 @@ struct band * fuseBand(struct band * B1,struct band * B2,int first_scan, int max
             {
                 if(B1->seqCentroid[posB1].intensity>B2->seqCentroid[posB2].intensity)
                 {
-                    //Rprintf("b");
                     nBand->seqCentroid[posN]=B1->seqCentroid[posB1];
                     posB1++;
                     posN++;
@@ -288,17 +292,36 @@ struct band * fuseBand(struct band * B1,struct band * B2,int first_scan, int max
 }
 
 
+void extendBand(struct band * b,int n, int min_scan, int max_scan){
+    if(n>=b->maxSize){
+        int csize;
+        if((max_scan-min_scan+1)<(b->maxSize*2)){
+            csize = (max_scan-min_scan+1);
+        }else{
+            csize = (b->maxSize*2);
+        }
+        struct centroid * scentroid = calloc(csize,sizeof(struct centroid));
+
+        int i=0;
+        for(i =0;(i<b->size);i++){
+            scentroid[i] = b->seqCentroid[i];
+        }
+        b->seqCentroid = scentroid;
+        b->maxSize = csize;
+    }
+}
+
 
 void insertBandAfter(struct bandList * bL, struct band ** i,struct centroid nCentroid, int first_scan, int max_scan)
 {
     struct band *nBand=calloc(1,sizeof(struct band));
-    nBand->seqCentroid=calloc((max_scan-first_scan+1),sizeof(struct centroid));
+    nBand->seqCentroid=calloc(5,sizeof(struct centroid));
     nBand->seqCentroid[0]=nCentroid;
     nBand->size=1;
+    nBand->maxSize=5;
     nBand->nextBand=(*i)->nextBand;
     nBand->prevBand=*i;
     nBand->meanMz=nCentroid.mz;
-    //nBand->intensity=nPeak.intensity;
     if((*i)->nextBand!=NULL)
     {
         (*i)->nextBand->prevBand=nBand;
@@ -310,13 +333,13 @@ void insertBandAfter(struct bandList * bL, struct band ** i,struct centroid nCen
 void insertBandBefore(struct bandList * bL, struct band ** i,struct centroid nCentroid, int first_scan, int max_scan)
 {
     struct band *nBand=calloc(1,sizeof(struct band));
-    nBand->seqCentroid=calloc((max_scan-first_scan+1),sizeof(struct centroid));
+    nBand->seqCentroid=calloc(5,sizeof(struct centroid));
     nBand->seqCentroid[0]=nCentroid;
     nBand->size=1;
+    nBand->maxSize=5;
     nBand->nextBand=*i;
     nBand->prevBand=(*i)->prevBand;
     nBand->meanMz=nCentroid.mz;
-    //nBand->intensity=nPeak.intensity;
     if((*i)->prevBand!=NULL)
     {
         (*i)->prevBand->nextBand=nBand;
@@ -343,11 +366,12 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
         nBand->nextBand=NULL;
         nBand->prevBand=NULL;
         nBand->meanMz=nCentroid.mz;
-        nBand->seqCentroid=calloc((max_scan-first_scan+1),sizeof(struct centroid));
+        nBand->seqCentroid=calloc(5,sizeof(struct centroid));
         nBand->size=1;
         //nBand->intensity=0;
         bL->head=nBand;
         bL->head->size=1;
+        bL->head->maxSize=5;
         bL->head->seqCentroid[0]=nCentroid;
         bL->size=1;
         *i=bL->head;
@@ -355,8 +379,6 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
     }
     int nfound=0;
     struct band * lfound[MAX_BAND];
-    //Rprintf("IPC : %0.5f %0.5f %0.5f Init : %0.5f  ",nPeak.low_limit,nPeak.centroid,nPeak.high_limit,(*i)->meanMz);
-    //Deuxième version du while moins pourrie
     while(nfound<MAX_BAND)
     {
         double mass_diff = rdmz>ppm*0.000001*nCentroid.mz ? rdmz : (ppm*0.000001*nCentroid.mz);
@@ -369,15 +391,11 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
         //Case where it is the last of the bandList and not found
         if((*i)->nextBand==NULL)
         {
-            //Rprintf("  LastElement  %f \n",(*i)->meanMz);
-
             break;
         }
         //Case where we passed throught the peak
         if((*i)->meanMz-nCentroid.mz>mass_diff)
         {
-            //Rprintf("  Too much  %f \n",(*i)->meanMz);
-            //
             break;
         }
         //If we still in the loop the peak is incremented
@@ -397,7 +415,6 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
         return; //Leaving the function.
     }
 
-    //Rprintf("FF");
     //While the situation is not okay, bands can be modified.
     int j;
     struct centroid toinsert=nCentroid;
@@ -411,8 +428,8 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
     int bp;
     while(ntrial!=nfound)
     {
-        //Rprintf("\n%0.5f",toinsert.mz);
         bp=0;
+
         //Initialised at the maximum limit.
         double minstate=ppm*toinsert.mz*0.000001;
         double norm=ppm*toinsert.mz*0.000001;
@@ -429,17 +446,14 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
                 bp=j;
             }
         }
-        //Rprintf("A");
         //Trying to add the point to his best position
         struct band * cband=lfound[bp];
         if((cband->size!=1)&(cband->seqCentroid[cband->size-1].scan==toinsert.scan)) //Case were there already is a point.
         {
             //Testing which point is the closest;
-            //Rprintf("\n%0.5f",toinsert.mz);
             double old_centroid=((cband->meanMz*cband->size)-cband->seqCentroid[cband->size-1].mz)/(cband->size-1);
             if(fabs(cband->seqCentroid[cband->size-1].mz-old_centroid)>fabs(toinsert.mz-old_centroid))
             {
-                //Rprintf("B");
                 memcentroid = toinsert;
                 cband->meanMz=(old_centroid*(cband->size-1)-cband->seqCentroid[cband->size-1].mz+memcentroid.mz)/(cband->size-1);
                 toinsert = cband->seqCentroid[cband->size-1];
@@ -455,92 +469,42 @@ void insertCentroidBandList(struct centroid nCentroid,struct band ** i, int max_
             }
             else
             {
-                //Rprintf("C");
                 tab_trial[bp]=1;
                 ntrial=ntrial+1;
-                //Rprintf("c");
             }
 
         }
         else   //Best case, the peak can be inserted in a line, in this case the function stop.
         {
-            //Rprintf("D");
+
+            extendBand(cband,cband->size,first_scan,max_scan);
             cband->seqCentroid[cband->size]=toinsert;
             cband->meanMz=(cband->meanMz*(cband->size)+toinsert.mz)/(cband->size+1);
             cband->size=cband->size+1;
             (*i)=lfound[0];
             return;
         }
+        //if(ntrial==nfound) Rprintf("   %d:%d Outcond   ",ntrial,nfound);
     }
-//Rprintf("OoW");
-//If we come here, a new band need to be created between to existing bands. We locate the band then create it.
     j=0;
-//Option for debugging.
-//Rprintf("%d %0.5f\n",nfound,toinsert.mz);
     while(lfound[j]->meanMz<toinsert.mz)
     {
-        //Rprintf("zz %d %0.5f zz\n",j,lfound[j]->meanMz);
         j++;
         if(j==nfound) break;
     }
 
     if(j==nfound)
     {
-        //Rprintf("After");
         insertBandAfter(bL,&(lfound[j-1]),toinsert,first_scan,max_scan);
     }
     else
     {
-        //Rprintf("Before");
         insertBandBefore(bL,&(lfound[j]),toinsert,first_scan,max_scan);
     }
 //Placing the pointer on the first ok pos.
     (*i)=lfound[0];
 }
 
-
-
-//    //Checking if the peak must is divided or not.
-//    if(found)
-//    {
-//        if((*i)->seqCentroid[(*i)->size-1].scan==nCentroid.scan)
-//        {
-//            double mz_val=((*i)->seqCentroid[(*i)->size-1].mz+nCentroid.mz)/2;
-//            //calculating the centroid value before adding the peak.
-//
-//            //Case where the new centroid is closer,
-//
-//            //Case where the new centroid is further.
-//            //Comparing the distance of the centroid to the center of the list.
-//            if(fabs(mz_val-(*i)->meanMz)<ppm*0.000001*nCentroid.mz)
-//            {
-//                //Rprintf("  doubleFuse  %f \n",(*i)->meanMz);
-//                struct centroid * doubleCentroid=malloc(sizeof(struct centroid));
-//                doubleCentroid->mz=((*i)->seqCentroid[(*i)->size-1].intensity*(*i)->seqCentroid[(*i)->size-1].mz+nCentroid.mz*nCentroid.intensity)/2;
-//                doubleCentroid->mz=mz_val;
-//                doubleCentroid->scan=nCentroid.scan;
-//                doubleCentroid->intensity=(*i)->seqCentroid[(*i)->size-1].intensity+nCentroid.intensity;
-//                (*i)->meanMz=((*i)->meanMz*((*i)->size)+mz_val-(*i)->seqCentroid[(*i)->size-1].mz)/((*i)->size);
-//                (*i)->seqCentroid[(*i)->size-1]=*doubleCentroid;
-//                //insertBand(bL,i,*doublePeak,first_scan,max_scan);
-//                free(doubleCentroid);
-//            }
-//            else
-//            {
-//                //Rprintf("  doubleNew  %f \n",(*i)->meanMz);
-//                insertBandAfter(bL,i,nCentroid,first_scan,max_scan);
-//            }
-//        }
-//        else
-//        {
-//            //Rprintf("  added  %f \n",(*i)->meanMz);
-//            (*i)->seqCentroid[(*i)->size]=nCentroid;
-//            (*i)->meanMz=((*i)->meanMz*((*i)->size)+nCentroid.mz)/((*i)->size+1);
-//            (*i)->size=(*i)->size+1;
-//            //(*i)->intensity=(*i)->intensity+nPeak.intensity;
-//        }
-//    }
-//}
 
 
 //Return the scan given by the number I
@@ -692,13 +656,9 @@ void cleanUpBandList(struct bandList * bL,int size_min, int injsc, int injend,do
                 removeBand(bL,to_remove);
                 break;
             }
-            //Rprintf(" Remove begin ",posBand->meanMz,posBand->size);
             counterBand++;
-            //Rprintf(" Remove done ",posBand->meanMz,posBand->size);
             continue;
         }
-        //debuggingBVizualisation(posBand);
-        //Rprintf(" free passed ",posBand->meanMz,posBand->size);
         int countSize=0;
         int old_scan=posBand->seqCentroid[0].scan;
         int current_scan=posBand->seqCentroid[0].scan;
@@ -755,36 +715,6 @@ void cleanUpBandList(struct bandList * bL,int size_min, int injsc, int injend,do
     }
 }
 
-//void checkSolvent(struct bandList * bL, int smin)
-//{
-//    int i=0;
-//    struct band * posBand =bL->head;
-//    int counterBand=1;
-//    while(1)
-//    {
-//        if(posBand==NULL)
-//        {
-//        }
-//
-//
-//    }
-//}
-
-
-
-//void calculateIntensities(struct bandList * bL,double * scantime)
-//{
-//    struct band * posBand=bL->head;
-//    while(posBand!=NULL)
-//    {
-//        posBand->intensity=trapzApprox(posBand,scantime);
-//        posBand=posBand->nextBand;
-//
-//    }
-//}
-
-
-
 
 SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanTimeVal,SEXP firstScan, SEXP lastScan, SEXP maxScan, SEXP numMz, SEXP vPpm, SEXP nIso, SEXP injSc,SEXP endInj, SEXP vSizeMin, SEXP vDmz,SEXP rFracMin)
 {
@@ -828,9 +758,10 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
     cmz.scan=1;
     cmz.intensity=this_scan->scan[0].intensity;
     struct band *nBand=calloc(1,sizeof(struct band));
-    nBand->seqCentroid=calloc((maxscan-firstscan+1),sizeof(struct centroid));
+    nBand->seqCentroid=calloc(5,sizeof(struct centroid));
     nBand->seqCentroid[0]=cmz;
     nBand->size=1;
+    nBand->maxSize=5;
     nBand->nextBand=NULL;
     nBand->prevBand=NULL;
     nBand->meanMz=cmz.mz;
@@ -845,9 +776,10 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
         cmz.scan=1;
         cmz.intensity=this_scan->scan[j].intensity;
         nBand=calloc(1,sizeof(struct band));
-        nBand->seqCentroid=calloc((maxscan-firstscan+1),sizeof(struct centroid));
+        nBand->seqCentroid=calloc(5,sizeof(struct centroid));
         nBand->seqCentroid[0]=cmz;
         nBand->size=1;
+        nBand->maxSize=5;
         nBand->nextBand=NULL;
         nBand->prevBand=currentBand;
         nBand->meanMz=cmz.mz;
@@ -866,68 +798,40 @@ SEXP findBandsFIACentroids(SEXP mzVal, SEXP intVal, SEXP scanIndexVal,SEXP ScanT
             cmz.mz=this_scan->scan[j].mz;
             cmz.scan=i;
             cmz.intensity=this_scan->scan[j].intensity;
-            //Rprintf("bi ");
             insertCentroidBandList(cmz,&currentBand,maxscan,firstscan,bL,ppm,diffmz);
-            //Rprintf("ei ");
         }
     }
-    //Rprintf("\n");
-    //end = clock();
-    //time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-
-
     //TO DEBUG PRINTING ALL THE PEAKS BAND FOUND
     struct band *posBand=bL->head;
     free(this_scan->scan);
     free(this_scan);
 
-    /**if(DEBUGGING){
-    posBand=bL->head;
-    while(posBand!=NULL){
-    Rprintf("%0.5f %d  %d\n",posBand->meanMz,posBand->tPeaksMz[0].scan,posBand->tPeaksMz[posBand->size-1].scan);
-    posBand=posBand->nextBand;
-    }
-    }**/
     struct band * memBand;
-    while(posBand!=NULL)
-    {
-        //Rprintf("%0.5f %d  %d\n",posBand->meanMz,posBand->tPeaksMz[0].scan,posBand->tPeaksMz[posBand->size-1].scan);
-        posBand=posBand->nextBand;
-    }
-    //debuggingVizualisation(bL);
-    //begin=clock();
-    //Rprintf("Beginning of the cleaning and fusing !\n");
+//    while(posBand!=NULL)
+//    {
+//        //Rprintf("%0.5f %d  %d\n",posBand->meanMz,posBand->tPeaksMz[0].scan,posBand->tPeaksMz[posBand->size-1].scan);
+//        posBand=posBand->nextBand;
+//    }
+
+//    Rprintf("IS:%d\n",size_bl(bL));
+
+    cleanUpBandList(bL,3,injbeginning,injend,0);
+//    Rprintf("AC:%d\n",size_bl(bL));
     int numFused=0;
     fuseBandList(bL,ppm,firstscan,lastscan,scantime,&numFused,diffmz);
-    //end = clock();
-    //time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    //Rprintf("%d bands have been fused %d bands remains , it took %0.3f seconds \n",numFused,bL->size,time_spent);
-    //debuggingVizualisation(bL);
-    //begin=clock();
+//    Rprintf("AF:%d\n",size_bl(bL));
     cleanUpBandList(bL,size_min,injbeginning,injend,frac_min);
     //debuggingVizualisation(bL);
-
-    fuseBandList(bL,2*ppm,firstscan,lastscan,scantime,&numFused,diffmz);
-    //debuggingVizualisation(bL);
+//    Rprintf("AC2:%d\n",size_bl(bL));
     double *mz_top=calloc(bL->size,sizeof(double));
     double *mz_bottom=calloc(bL->size,sizeof(double));
     int *scan_min=calloc(bL->size,sizeof(int));
     int *scan_max=calloc(bL->size,sizeof(int));
     int *num_points=calloc(bL->size,sizeof(int));
     double *intensity_v=calloc(bL->size,sizeof(double));
-    //end = clock();
-    //time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    //Rprintf("%d bands remains after fusing and cleaning, it took %0.3f seconds \n",bL->size,time_spent);
-    //begin=clock();
-    //calculateIntensities(bL,scantime);
-    //end=clock();
-    //time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    //Rprintf("Intensities have been calculated, it took %0.3f seconds \n");
     int numFound = bL->size;
     posBand=bL->head;
     i=0;
-
-    //
 
     //Freeing the data structure.
     PROTECT(mat_to_return = allocMatrix(REALSXP,numFound,8));
