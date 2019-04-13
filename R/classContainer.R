@@ -81,7 +81,7 @@ setClass(
         groupidx = list(),
         step = "empty",
         path = character(),
-        fClasses = data.frame(),
+        classes = data.frame(),
         dataMatrix = matrix(nrow = 0, ncol = 0),
         noiseEstimation = new("noiseEstimation"),
         injectionPeaks = list(),
