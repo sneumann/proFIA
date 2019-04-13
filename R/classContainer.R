@@ -3,9 +3,9 @@
 
 
 #' An S4 class to represent an FIA experiments.
-#' 
+#'
 #' The S4 class also includes all the informations about processing, and the detected signals
-#' are stored. 
+#' are stored.
 #'
 #' @include noiseEstimator.R
 #' @param object A proFIAset object.
@@ -72,8 +72,8 @@ setClass(
         noiseEstimation = "noiseEstimation",
         injectionPeaks = "list",
         injectionScan = "numeric"
-        
-        
+
+
     ),
     prototype = list(
         peaks = matrix(nrow = 0, ncol = 0),
