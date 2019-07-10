@@ -75,7 +75,7 @@ interToRegress <- function(object,
     plmin <- NULL
     ###Implement th enon loess method.
     if (is.null(thresh)) {
-        mag <- movavg(try[1:plsup], min(7,floor(plsup)/2), type = "s")
+        mag <- movavg(try[1:plsup], min(7,floor(plsup/2)), type = "s")
         mag <- mag[3:(length(mag) - 2)]
         plmin <- which.min(mag) + 2
         
