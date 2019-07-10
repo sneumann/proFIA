@@ -284,7 +284,7 @@ findFIASignal <-
 				sec = 2,
 				iquant = 0.95,
 				gpeak = sizepeak,
-				graphical = graphical
+				graphical = FALSE
 			)
 			#cat("klkl");print(modelPeak);cat("kllkkl")
 			###Beginning and end correspond to the position where th epeak int is superior at 5%
@@ -1408,9 +1408,9 @@ start_param_emg <- function(tx,ty){
 	
 	
 	
-	graphics::plot(tx,ty/max(ty),type="l",col="black",main=sprintf("%0.3f",ratio))
-	lines(tx,persoConv(tx,parv),col="purple")
-	abline(v=c(tx[p1],tx[mv],tx[p2]),col="darkgreen")
+	# graphics::plot(tx,ty/max(ty),type="l",col="black",main=sprintf("%0.3f",ratio))
+	# lines(tx,persoConv(tx,parv),col="purple")
+	# abline(v=c(tx[p1],tx[mv],tx[p2]),col="darkgreen")
 	parv
 	
 }
@@ -1470,7 +1470,6 @@ getInjectionPeak <-
 			 scanmax = length(xraw@scantime),
 			 refinement = TRUE,
 			 graphical = FALSE) {
-		graphical <- TRUE
 		if (is.null(gpeak)) {
 			gpeak <- determiningInjectionZone(xraw,scanmin=scanmin,scanmax=scanmax)
 		}

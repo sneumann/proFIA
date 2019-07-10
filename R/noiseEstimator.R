@@ -72,10 +72,14 @@ interToRegress <- function(object,
     vsize <- vsize / sum(vsize)
     vsize <- cumsum(vsize)
     plsup <- which(vsize > quant)[1] + 1
+    
+    if(plsup<=2){
+      return(c(NA,NA))
+    }
     plmin <- NULL
     ###Implement th enon loess method.
     if (is.null(thresh)) {
-        mag <- movavg(try[1:plsup], min(7,floor(plsup/2)), type = "s")
+        mag <- movavg(try[1:plsup], max(min(7,floor(plsup/2)),2), type = "s")
         mag <- mag[3:(length(mag) - 2)]
         plmin <- which.min(mag) + 2
         
@@ -264,6 +268,7 @@ setMethod("fitModel", "noiseEstimation", function(object,
     
     ###Cutting the vector on which do th regression
     limreg <- interToRegress(object, quant, threshold)
+    if(is.na(limreg[1])) return(NA)
     
     if(!is.null(absThreshold)){
     	pLim <- which(xvalues>absThreshold)
@@ -274,7 +279,8 @@ setMethod("fitModel", "noiseEstimation", function(object,
     	limreg[1] <- max(limreg[1],pLim[1])
     }
     
-    iilim = xvalues[c(limreg[1], limreg[2])]
+    
+    iilim <-  xvalues[c(limreg[1], limreg[2])]
     #print(limreg)
     
     xvalues <- xvalues[limreg[1]:limreg[2]]
@@ -447,9 +453,7 @@ estimateNoiseFile <-
         
         vnum <- rep(0, nbin)
         vmean <- rep(0, nbin)
-        #vvar=rep(0,nbin)
-        #print(vecvar)
-        #vvar[vecvar[,1]]=vecvar[,2]
+
         vmean[vecmean[, 1]] <- vecmean[, 2]
         vmean <- sapply(vmean, function(x) {
             if (is.nan(x) | is.na(x)) {

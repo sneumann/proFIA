@@ -290,6 +290,15 @@ proFIAset <-
             }
         }
         nes <- fitModel(nes,absThreshold = NULL)
+        if(is.na(nes)){
+          nes <- estimateNoiseMS(pFIA@classes[, 1],
+                                 ppm = ppm, minInt = 50, 
+                                 parallel =
+                                   FALSE)
+          nes <- fitModel(nes,absThreshold = NULL)
+        }
+        
+        
         if(graphical){
             plotNoise(nes)
         }
