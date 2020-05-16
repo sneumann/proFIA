@@ -357,6 +357,7 @@ estimateNoiseFile <-
              ppm,
              nbin = 120,
              denoising = c("BWF", "SavGol"),
+             f = c("TIC","regression"),
              graphical =
                  FALSE,
              maxInt = NULL,
@@ -373,8 +374,13 @@ estimateNoiseFile <-
     	}else{
     		xraw <- fname
     	}
-        sizepeak <- determiningInjectionZone(xraw, graphical = FALSE, ...)
-        
+        f <- match.arg(f)
+        if(f=="regression"){
+          sizepeak <-
+            determiningInjectionZone(xraw,...)
+        }else if(f=="TIC"){
+          sizepeak <- determiningInjectionZoneFromTIC(xraw,...)
+        }
         ###Checking if the sizepeak algorithm is bad.
         
         beginningInjection <- sizepeak[1]
@@ -502,10 +508,12 @@ estimateNoiseMS <-
              nBin = 500,
              minInt = 500,
              maxInt = 10 ^ 8,
+             f=c("TIC","regression"),
              parallel,
     		 includeZero=TRUE,
     		 dmz=0.0005,
              BPPARAM = NULL) {
+        f <- match.arg(f)
         res = NULL
         if (parallel & requireNamespace("BiocParallel")) {
             if (is.null(BPPARAM))
@@ -520,6 +528,7 @@ estimateNoiseMS <-
                     minInt,
                 includeLowest=includeZero,
                 dmz=dmz,
+                f=f,
                 BPPARAM = BPPARAM
             )
             
@@ -538,6 +547,7 @@ estimateNoiseMS <-
                     maxInt = maxInt,
                     minInt =
                         minInt,
+                    f=f,
                 	includeLowest=includeZero,
                     simplify = FALSE
                 )  

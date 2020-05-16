@@ -239,10 +239,12 @@ proFIAset <-
              parallel = TRUE,
              BPPARAM = NULL,
              noiseEstimation = TRUE,
+             f = c("regression","TIC"),
              graphical=FALSE,
              ...) {
         pFIA <- new("proFIAset")
         pFIA@classes <- acquisitionDirectory(path)
+        f <- match.arg(f)
         #print(object@classes)
         pFIA@path <- path
         message(
@@ -258,12 +260,14 @@ proFIAset <-
         }
         ##Quick opening of two random files to evaluate intensity.
         vtab <- c(1,cumsum(table(pFIA@classes[,2])))
-        vmint <- apply(pFIA@classes[vtab,],1,function(x){
+        tvmint <- apply(pFIA@classes[vtab,],1,function(x){
             requireNamespace("xcms")
             vxraw <- xcmsRaw(x[1])
-            max(vxraw@env$intensity)
+            c(quantile(vxraw@env$intensity,probs=0.03),max(vxraw@env$intensity))
         })
-        vmint <- 2*max(vmint)
+        
+        vmint <- 2*max(tvmint[2,])
+        vminint <- mean(tvmint[1,])
 
         ###The nois emodel is estimated.
         nes <- NULL
@@ -275,7 +279,9 @@ proFIAset <-
                     ppm = ppm,
                     parallel = parallel,
                     BPPARAM = BPPARAM,
-                    maxInt=vmint
+                    maxInt=vmint,
+                    minInt=vminint,
+                    f=f,
                 )
             } else{
                 if (parallel) {
@@ -286,16 +292,22 @@ proFIAset <-
                 nes <- estimateNoiseMS(pFIA@classes[, 1],
                                              ppm = ppm,
                                              parallel =
-                                                 FALSE)
+                                                 FALSE,
+                                       maxInt=vmint,
+                                       minInt=vminint)
             }
         }
+        # browser()
         nes <- fitModel(nes,absThreshold = NULL)
+        # browser()
         if(is.na(nes)){
           nes <- estimateNoiseMS(pFIA@classes[, 1],
-                                 ppm = ppm, minInt = 50, 
+                                 ppm = ppm, minInt = 50, maxInt = vmint,
                                  parallel =
                                    FALSE)
+          # browser()
           nes <- fitModel(nes,absThreshold = NULL)
+          # browser()
         }
         
         
@@ -315,6 +327,7 @@ proFIAset <-
                 openAndFindPeaks,
                 ppm = ppm,
                 es = pFIA@noiseEstimation,
+                f=f,
                 BPPARAM = BPPARAM,
                 ... =
                     ...
@@ -1477,10 +1490,9 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     matpres <- matrix(0,
                      nrow = length(index),
                      ncol = nrow(object@classes))
-    matmz <- matrix(0, nrow = length(index), ncol = 3)
+    
     for (i in 1:length(index)) {
         matpres[i, object@peaks[object@groupidx[[index[i]]],,drop=FALSE][, "sample"]] = 1
-        matmz[i,] = object@group[index[i], c("mzMin", "mzMax", "mzMed")]
     }
     if (!is.null(subsample)) {
         matpres <- matpres[, subsample, drop = FALSE]
@@ -1489,25 +1501,30 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     }
     # print(matmz)
     # print(matpres)
-    vall <- sapply(1:length(subsample), function(x, samplev, matpres, matmz, margin) {
-        xraw  <-  xcmsRaw(samplev[x])
-        rEIC  <-  list()
-        for (j in 1:nrow(matmz))
+    vall <- sapply(subsample, function(x, paths, peaks, idx, to_idx) {
+        xraw  <-  xcmsRaw(paths[x])
+        rEIC  <-  vector(mode="list",length=length(idx))
+        for (j in seq_along(to_idx))
         {
-            if (matpres[j, x]  ==  0)
-            {
-                rEIC[[j]]  <-  NA
-            } else{
-                mzrange <- c(matmz[j, c(1, 2), drop = FALSE])
-                rEIC[[j]] <- rawEIC(xraw, mzrange = c(mzrange[1], mzrange[2]))$intensity
-                if(scaled) rEIC[[j]] <- rEIC[[j]]/max(rEIC[[j]])
-                # print(sum(rEIC[[j]]))
-            }
+          sel_idx <- idx[[to_idx[j]]]
+          sel_idx <- sel_idx[peaks[sel_idx,"sample"]==x]
+          if(length(sel_idx)==0){
+            rEIC[[j]] <- NA
+            next
+          }else{
+            mzrange <- c(min(peaks[sel_idx,"mzmin"]),max(peaks[sel_idx,"mzmax"]))
+            scanlim <- c(min(peaks[sel_idx,"scanMin"]),max(peaks[sel_idx,"scanMax"]))
+            rEIC[[j]] <- list(intensity=rawEIC(xraw, mzrange = c(mzrange[1], mzrange[2]))$intensity)
+            if(scaled) rEIC[[j]][[1]] <- rEIC[[j]][[1]]/max(rEIC[[j]][[1]])
+            sscan <- rep(FALSE,length(xraw@scantime))
+            sscan[scanlim[1]:scanlim[2]] <- TRUE
+            rEIC[[j]][[2]] <-sscan
+          }
         }
         rEIC$scantime <- xraw@scantime
         rEIC
-    }, samplev = object@classes[subsample, 1], matpres = matpres, matmz = matmz, simplify =
-        FALSE, margin = margin)
+    }, paths = object@classes[, 1], peaks = object@peaks,
+    to_idx = index,idx=object@groupidx, simplify =FALSE)
     #return(vall)
     ###Now we have a list of list[[list[[]]]] with expriment[acquisition]
     colvec <- NULL
@@ -1526,6 +1543,7 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
     colarea <- NULL
     if(area){
     	colarea <- col2rgb(colvec)
+    	# colvec <- rep("black",length(colvec))
     	colarea <- apply(colarea,2,function(x){
     		rgb(x[1],x[2],x[3],80,maxColorValue = 255)
     	})
@@ -1545,7 +1563,7 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
         maxy  <-  max(unlist(vecval[pok]))
         mtitle <- NULL
         if(is.null(title)){
-            mtitle  <-  paste("Group :", index[i], sprintf("%0.4f", matmz[i, 3]), "m/z")
+            mtitle  <-  paste("Group :", index[i], sprintf("%0.4f", object@group[index[i],"mzMed"]), "m/z")
         }else{
             mtitle <- title[i]
         }
@@ -1560,10 +1578,15 @@ setMethod("plotFlowgrams", "proFIAset", function(object,
             ylim  =  c(0, maxy)
         )
         for (j in 1:length(pok)) {
-            lines(vall[[pok[j]]]$scantime, vall[[pok[j]]][[i]], col = colvec[pok[j]])
+          
+            lines(vall[[pok[j]]]$scantime, vall[[pok[j]]][[i]][[1]], col = colvec[pok[j]])
         	if(area){
-        		sx <- c(vall[[pok[j]]]$scantime,rev(vall[[pok[j]]]$scantime))
-        		sy <- c(vall[[pok[j]]][[i]],rep(0,length(vall[[pok[j]]][[i]])))
+
+        	  sx <- vall[[pok[j]]]$scantime[vall[[pok[j]]][[i]][[2]]]
+        		sx <- c(sx,rev(sx))
+        		sy <- vall[[pok[j]]][[i]][[1]]
+        		sy <- sy[vall[[pok[j]]][[i]][[2]]]
+        		sy <- c(sy,rep(0,length(sy)))
         		polygon(sx,sy,col=colarea[pok[j]])
         	}
         }
