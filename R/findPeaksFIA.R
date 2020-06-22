@@ -1435,6 +1435,10 @@ determiningSizePeak.Geom <-
 
 start_param_emg <- function(tx,ty){
 	sol <- ty[1]
+	if(sol>median(ty)){
+	  sol <- quantile(ty,0.05)
+	}
+	
 	mv <- which.max(ty)
 	q10 <- (ty[mv]-sol)*0.1+sol
 	
@@ -1964,3 +1968,4 @@ openAndFindPeaks <- function(fname, ppm, f, es = es, ...) {
 	)
 	
 }
+>>>>>>> comp_sciex
