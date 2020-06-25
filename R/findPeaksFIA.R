@@ -1968,4 +1968,3 @@ openAndFindPeaks <- function(fname, ppm, f, es = es, ...) {
 	)
 	
 }
->>>>>>> comp_sciex
